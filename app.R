@@ -1,3 +1,5 @@
+source("global.R", local = TRUE)
+
 # ---- UI ----
 ui <- dashboardPage(
   skin = "blue",
