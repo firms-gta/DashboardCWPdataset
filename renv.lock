@@ -25,7 +25,7 @@
       "RemoteRepo": "CWP.dataset",
       "RemoteUsername": "bastienird",
       "RemoteRef": "HEAD",
-      "RemoteSha": "201ebad0bce26f09ec93637256197bf3fb61be02",
+      "RemoteSha": "c8b473ba09114c934cef4566909ab7d5726044a8",
       "Requirements": [
         "DBI",
         "DT",
@@ -65,7 +65,7 @@
         "xts",
         "yaml"
       ],
-      "Hash": "4d78bf1c931f1b2bbe55402512f582bb"
+      "Hash": "93a2bc6a51c041980bb115d91d0a99d8"
     },
     "DBI": {
       "Package": "DBI",
