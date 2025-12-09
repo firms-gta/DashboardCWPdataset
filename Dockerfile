@@ -1,6 +1,6 @@
 FROM ghcr.io/bastienird/gta_nc_datapaper:latest AS builder
 COPY inputs/data/GTA/NCD_MAPPED.qs /root/DashboardCWPdataset/data/NCD_MAPPED.qs
-COPY inputs/data/GTA/FS_MAPPED.qs /root/DashboardCWPdataset/data/FS_MAPPED.qs
+COPY inputs/data/FSJ/FS_MAPPED.qs /root/DashboardCWPdataset/data/FS_MAPPED.qs
 
 WORKDIR /root/DahsboardCWPdataset
 RUN mkdir -p /tmp/flattened_lib \
