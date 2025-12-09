@@ -148,8 +148,10 @@ ENV RENV_PATHS_ROOT=/root/DashboardCWPdataset/renv
 ENV RENV_PATHS_CACHE=/root/DashboardCWPdataset/renv/library
 RUN mkdir -p /root/DashboardCWPdataset/renv/library
 
-COPY testing_loading_of_all_packages.R ./testing_loading_of_all_packages.R
-RUN R -e "source('testing_loading_of_all_packages.R')"
+ARG TEST_SCRIPT_REF=main
+ARG TEST_SCRIPT_URL="https://raw.githubusercontent.com/firms-gta/tunaatlas_pie_map_shiny/${TEST_SCRIPT_REF}/testing_loading_of_all_packages.R"
+
+RUN R -e "source(url('$TEST_SCRIPT_URL'), local=TRUE, encoding='UTF-8')"
 
 RUN echo "✅ Listing files in ./data after conversion:" && ls -lh ./data
 
