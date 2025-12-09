@@ -133,7 +133,8 @@ COPY renv/settings.json renv/
 RUN Rscript -e "install.packages('remotes', repos='https://cloud.r-project.org')"
 RUN Rscript -e "remotes::install_version('renv', version = jsonlite::fromJSON('renv.lock')\$Packages[['renv']]\$Version, repos = 'https://cran.r-project.org')"
 
-COPY renv/library/ renv/library/
+# COPY renv/library/ renv/library/
+#removed for now as no need to do it in local
 
 # Restore renv packages
 RUN R -e "renv::activate()" 
