@@ -1,0 +1,12 @@
+parameter,value
+title1,FS
+title2,GTA
+fact,catch
+time_cols,time_start
+geo_dim,geographic_identifier
+geo_group,gridtype
+coverage,TRUE
+print_map,FALSE
+plotting_type,static
+removemap,TRUE
+debug_small,FALSE

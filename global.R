@@ -3,7 +3,7 @@ options(shiny.fullstacktrace = TRUE)
 options(shiny.sanitize.errors = FALSE)
 options(shiny.maxRequestSize = 200*1024^2)  # 200 MB upload limit
 
-suppressPackageStartupMessages({
+# suppressPackageStartupMessages({
   library(shiny)
   library(shinydashboard)
   library(DT)
@@ -12,8 +12,23 @@ suppressPackageStartupMessages({
   library(shinycssloaders)
   require(stringr)
   library(CWP.dataset)
-})
-if(TRUE){
+  library(qs)
+  library(shinyjs)
+# })
+
+PRELOAD_DATA <- Sys.getenv("SHINY_PRELOAD_DATA", "TRUE") == "TRUE"
+PRELOAD_DATA_PATH <- Sys.getenv("SHINY_PRELOAD_DATA_PATH", "data/")
+
+source("R/load_default_data.R")
+source("R/load_parameters_from_csv.R")
+
+# Variables globales (comme avant)
+shapefile.fix <- NULL
+continent <- ""
+
+default_data <- load_default_data(PRELOAD_DATA = PRELOAD_DATA,PRELOAD_DATA_PATH  = PRELOAD_DATA_PATH)
+
+if(!PRELOAD_DATA){
   if(!exists("continent")){
     
     WFS <- ows4R::WFSClient$new(
@@ -84,3 +99,60 @@ as_dt <- function(x) {
   }
   NULL
 }
+
+
+
+require(futile.logger)
+
+
+
+if (PRELOAD_DATA) {
+  
+  time_cols <- if (!is.null(default_data$parameters$time_cols)) default_data$parameters$time_cols else "time_start"
+  geo_dim   <- if (!is.null(default_data$parameters$geo_dim))   default_data$parameters$geo_dim   else "geographic_identifier"
+  geo_group <- if (!is.null(default_data$parameters$geo_group)) default_data$parameters$geo_group else "gridtype"
+  fact      <- if (!is.null(default_data$parameters$fact))      default_data$parameters$fact      else "catch"
+  plotting  <- if (!is.null(default_data$parameters$plotting_type)) default_data$parameters$plotting_type else "view"
+  coverage  <- if (!is.null(default_data$parameters$coverage))  isTRUE(default_data$parameters$coverage) else TRUE
+  removemap <- if (!is.null(default_data$parameters$removemap)) isTRUE(default_data$parameters$removemap) else FALSE
+  debug_small <- if (!is.null(default_data$parameters$debug_small)) isTRUE(default_data$parameters$debug_small) else FALSE
+  continent <- if (!is.null(default_data$parameters$continent)) default_data$parameters$continent else ""
+  parameter_colnames_to_keep <- if (!is.null(default_data$parameters$continent)) default_data$parameters$continent else ""
+  
+  PRELOADED_RESULT <- CWP.dataset::comprehensive_cwp_dataframe_analysis(
+    parameter_init = default_data$dataset1,
+    parameter_final =  default_data$dataset2,
+    fig.path = getwd(),
+    parameter_fact =  fact,
+    parameter_short = FALSE,
+    parameter_columns_to_keep = c("Precision","measurement_unit","Values dataset 1","Values dataset 2","Loss / Gain","Difference (in %)","Dimension","Difference in value"),
+    parameter_diff_value_or_percent = "Difference (in %)",
+    parameter_time_dimension =  time_cols,
+    parameter_geographical_dimension =  geo_dim,
+    parameter_geographical_dimension_groupping =  geo_group,
+    parameter_colnames_to_keep = c("fishing_fleet", "Ocean", "species_name", "measurement_unit", "measurement_value"),
+    outputonly = FALSE,
+    plotting_type =  plotting,
+    continent = continent,
+    coverage = isTRUE(coverage),
+    print_map = FALSE,
+    parameter_resolution_filter = NULL,
+    parameter_titre_dataset_1 = "FS",
+    parameter_titre_dataset_2 = "GTA",
+    unique_analyse = FALSE,
+    removemap = isTRUE(removemap),
+    topnumber = 6
+  )
+  PRELOADED_RESULT$summary_of_differences <- 
+    PRELOADED_RESULT$summary_of_differences %>%
+    dplyr::mutate(across(where(is.numeric), ~ round(.x, 2)))%>%
+    dplyr::mutate(across(
+      where(is.numeric),
+      ~ format(.x, big.mark = " ", scientific = FALSE)
+    ))
+  
+} else {
+  PRELOADED_RESULT <- NULL
+}
+
+

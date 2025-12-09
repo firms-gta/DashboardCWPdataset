@@ -1,0 +1,144 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches:
+      - 'main'
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      base_branch:
+        description: "Branch to base the Docker image on (e.g., main, R4.2.3withoutQGIS)"
+        required: true
+        default: "main"
+      action:
+        description: "Action to perform: build,build-and-push, build-no-cache-and-push"
+        required: true
+        default: "build" 
+
+env:
+  CACHE_IMAGE: ghcr.io/firms-gta/dashboardcwpdataset-cache
+  DOCKER_BUILDKIT: 1
+  RENV_PATHS_ROOT: /root/.cache/R/renv
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 140
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Calculate renv.lock hash
+        id: renv_lock
+        run: |
+          if [ -f renv.lock ]; then
+            echo "renv_lock_hash=$(sha256sum renv.lock | cut -d' ' -f1)" >> $GITHUB_ENV
+          else
+            echo "renv_lock_hash=default" >> $GITHUB_ENV
+          fi
+
+      - name: Calculate DOI.csv hash
+        id: doi_csv
+        run: |
+          if [ -f DOI.csv ]; then
+            echo "doi_csv_hash=$(sha256sum DOI.csv | cut -d' ' -f1)" >> $GITHUB_ENV
+          else
+            echo "doi_csv_hash=default" >> $GITHUB_ENV
+          fi
+      - name: Docker meta
+        id: meta
+        if: ${{ contains(github.event.inputs.action, 'push') }}
+        uses: docker/metadata-action@v4
+        with:
+          images: ghcr.io/firms-gta/dashboardcwpdataset
+          flavor: latest=true
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+          labels: |
+            org.opencontainers.image.url=${{ github.repository }}
+            org.opencontainers.image.source=${{ github.repository }}
+            org.opencontainers.image.title=DashboardCWPdataset
+            org.opencontainers.image.description=Interactive Shiny application for Tuna Atlas data visualization
+            org.opencontainers.image.vendor=IRD
+            org.opencontainers.image.author=Bastien Grasset <bastien.grasset@ird.fr>
+
+      - name: Login to image repository
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          driver-opts: image=moby/buildkit:master,network=host
+
+      - name: Verify Docker images
+        run: docker images
+
+      - name: Inspect Docker cache
+        run: docker buildx du
+
+      - name: Build Docker image
+        if: ${{ !contains(github.event.head_commit.message, 'No building docker image') }}
+        run: |
+          BRANCH_NAME=$(echo ${{ github.ref_name }} | tr '/' '_' | tr ':' '_')
+    
+          if [[ "${{ github.event.inputs.action }}" == "build-no-cache-and-push" || "${{ github.event.inputs.action }}" == "build-no-cache" ]]; then
+            echo "Building without cache..."
+            docker buildx build \
+              --no-cache \
+              --progress=plain \
+              --build-arg MODE=prod \
+              --build-arg RENV_PATHS_ROOT=${{ env.RENV_PATHS_ROOT }} \
+              --build-arg RENV_LOCK_HASH=${{ env.renv_lock_hash }} \
+              --build-arg BRANCH=${{ github.ref_name }} \
+              --build-arg BASE_IMAGE=rocker/r-ver:4.2.3 \
+              --build-arg DOI_CSV_HASH=${{ env.doi_csv_hash }} \
+              --tag ghcr.io/firms-gta/dashboardcwpdataset:${BRANCH_NAME} \
+              --output type=docker,dest=/tmp/docker-image.tar \
+              .
+          else
+            echo "Building with cache..."
+            docker buildx build \
+              --progress=plain \
+              --cache-from type=registry,ref=$CACHE_IMAGE:${BRANCH_NAME} \
+              --cache-to type=registry,ref=$CACHE_IMAGE:${BRANCH_NAME},mode=max \
+              --build-arg MODE=prod \
+              --build-arg BRANCH=${{ github.ref_name }} \
+              --build-arg RENV_PATHS_ROOT=${{ env.RENV_PATHS_ROOT }} \
+              --build-arg BASE_IMAGE=rocker/r-ver:4.2.3 \
+              --build-arg RENV_LOCK_HASH=${{ env.renv_lock_hash }} \
+              --build-arg DOI_CSV_HASH=${{ env.doi_csv_hash }} \
+              --tag ghcr.io/firms-gta/dashboardcwpdataset:${BRANCH_NAME} \
+              --output type=docker,dest=/tmp/docker-image.tar \
+              .
+          fi
+
+      - name: Load Docker image
+        if: ${{ github.event_name == 'workflow_dispatch' && contains(github.event.inputs.action, 'push') || github.event_name == 'push' && github.ref_type == 'tag' }}
+        run: |
+          docker load -i /tmp/docker-image.tar
+
+      - name: Conditional push Docker image
+        if: ${{ github.event_name == 'workflow_dispatch' && contains(github.event.inputs.action, 'push') || github.event_name == 'push' && github.ref_type == 'tag' }}
+        run: |
+          TAG_NAME=$(basename ${GITHUB_REF})
+          BRANCH_NAME=$(echo ${{ github.ref_name }} | sed 's/[^a-zA-Z0-9_.-]/_/g') # Sanitize branch name
+
+          # Check if the branch is main
+          if [ "$BRANCH_NAME" = "main" ]; then
+            docker tag ghcr.io/firms-gta/dashboardcwpdataset:${BRANCH_NAME} ghcr.io/firms-gta/dashboardcwpdataset:latest
+            docker push ghcr.io/firms-gta/dashboardcwpdataset:latest
+          else
+            docker tag ghcr.io/firms-gta/dashboardcwpdataset:${BRANCH_NAME} ghcr.io/firms-gta/dashboardcwpdataset:${TAG_NAME}
+            docker push ghcr.io/firms-gta/dashboardcwpdataset:${BRANCH_NAME}
+            docker push ghcr.io/firms-gta/dashboardcwpdataset:${TAG_NAME}
+          fi
+

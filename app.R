@@ -6,34 +6,49 @@ ui <- dashboardPage(
   dashboardHeader(title = "Analysis Dashboard"),
   dashboardSidebar(
     sidebarMenu(
-      menuItem("Run analysis", tabName = "run", icon = icon("play")),
+      menuItem("Overview", tabName = "run", icon = icon("play")),
       menuItem("Comparison", tabName = "comparison", icon = icon("exchange-alt")),
-      menuItem("Coverage", tabName = "coverage", icon = icon("sliders")),
-      menuItem("Spatial coverage", tabName = "spatial", icon = icon("globe")),
-      menuItem("Combined summary", tabName = "summary", icon = icon("bar-chart"))
+      if (!PRELOAD_DATA) {
+        menuItem("Coverage", tabName = "coverage", icon = icon("sliders"))
+      },
+      if (!PRELOAD_DATA) {
+        menuItem("Spatial coverage", tabName = "spatial", icon = icon("globe"))
+      },
+      if (!PRELOAD_DATA) {
+        menuItem("Combined summary", tabName = "summary", icon = icon("bar-chart"))
+      }
     ),
     hr(),
     
     # --- Dataset 1 ---
-    h4("Dataset 1"),
+   
+    div(id = "Dataset_1_mode_block",
+        h4("Dataset 1")
+    ),
     fileInput("file_init", "Upload dataset 1 (CSV/RDS/RData)", accept = c(".csv", ".rds", ".RDS", ".rdata", ".RData")),
     checkboxInput("has_header", "CSV has header", TRUE),
     textInput("sep", "CSV separator", ","),
-    tags$small("Required columns: measurement_value, time_start (Date/character), geographic_identifier (optional), gridtype (optional)."),
+    div(id = "requirement_bloc_mode_block",
+        tags$small("Required columns: measurement_value, time_start (Date/character), geographic_identifier (optional), gridtype (optional).")
+    ),
     
     # --- Dataset 2 (pour comparaison) ---
-    h4("Dataset 2 (for comparison)"),
+    div(id = "Dataset_2_mode_block",
+        h4("Dataset 2")
+    ),
     fileInput("file_final", "Upload dataset 2 (CSV/RDS/RData)", accept = c(".csv", ".rds", ".RDS", ".rdata", ".RData")),
     checkboxInput("has_header2", "CSV has header", TRUE),
     textInput("sep2", "CSV separator", ","),
     
     hr(),
-    h4("Analysis Mode"),
+    div(id = "analysis_mode_block",
+        h4("Analysis Mode"),
     radioButtons("analysis_mode", "Mode:",
                  choices = c("Unique analysis" = "unique", "Comparison" = "comparison"),
-                 selected = "unique"),
-    
-    h4("Parameters"),
+                 selected = "unique")
+    ),
+    div(id = "analysis_parameter",
+        h4("Parameters")),
     textInput("title1", "Dataset 1 title", value = "Dataset 1"),
     textInput("title2", "Dataset 2 title", value = "Dataset 2"),
     selectInput("time_cols", "Time columns", choices = c("time_start"), selected = "time_start", multiple = TRUE),
@@ -53,66 +68,69 @@ ui <- dashboardPage(
     selectizeInput("fleet", "Fishing fleet", choices = NULL, multiple = TRUE, options = list(placeholder = "Select fleets...")),
     
     hr(),
-    actionButton("run_btn", "Run analysis", icon = icon("rocket"), class = "btn-primary"),
-    actionButton("clear_logs", "Clear logs", icon = icon("eraser"), class = "btn"),
-    downloadButton("download_logs", "Download logs")
+    actionButton("run_btn", "Run analysis", icon = icon("rocket"), class = "btn-primary")
   ),
   
   dashboardBody(
+    useShinyjs(),
     tags$head(tags$style(HTML(".content-wrapper { background: #0b1220; color: #e5e7eb;} .box { border-radius: 1rem; } .box-header { border-bottom: 1px solid #111827;} .small-box {border-radius: 1rem;}"))),
+    
+    # message en haut si mode préchargé
+    uiOutput("preload_banner"),
+    
     tabItems(
       tabItem(
         tabName = "run",
         fluidRow(
-          valueBoxOutput("vb_rows"),
-          valueBoxOutput("vb_cols"),
-          valueBoxOutput("vb_mem")
+          valueBoxOutput("vb_rows", width = 3),
+          valueBoxOutput("vb_cols", width = 3),
+          valueBoxOutput("vb_rows2", width = 3),
+          valueBoxOutput("vb_cols2", width = 3)
         ),
         fluidRow(
-          box(width = 12, title = "Preview Dataset 1 (sortable / filterable)", status = "primary", solidHeader = TRUE,
-              withSpinner(DTOutput("table_preview")))
+          box(width = 6, title = "Preview Dataset 1 (first 5 rows)", status = "primary", solidHeader = TRUE,
+              withSpinner(DTOutput("table_preview"))),
+          box(width = 6, title = "Preview Dataset 2 (first 5 rows)", status = "warning", solidHeader = TRUE,
+              withSpinner(DTOutput("table_preview2_home")))
         ),
-        fluidRow(
-          box(width = 12, title = "Status / logs", status = "primary", solidHeader = TRUE,
-              verbatimTextOutput("status_log"))
-        ),
-        fluidRow(
-          box(width = 12, title = "Session / Client info", status = "primary", solidHeader = TRUE,
-              verbatimTextOutput("client_info"))
-        )
+        # fluidRow(
+        #   box(width = 12, title = "Status / logs", status = "primary", solidHeader = TRUE,
+        #       verbatimTextOutput("status_log"))
+        # ),
+        # fluidRow(
+        #   box(width = 12, title = "Session / Client info", status = "primary", solidHeader = TRUE,
+        #       verbatimTextOutput("client_info"))
+        # )
       ),
       
       # --- Nouvel onglet Comparaison ---
       tabItem(
         tabName = "comparison",
-        fluidRow(
-          valueBoxOutput("vb_rows2"),
-          valueBoxOutput("vb_cols2"),
-          valueBoxOutput("vb_mem2")
-        ),
-        fluidRow(
-          box(width = 12, title = "Preview Dataset 2 (sortable / filterable)", status = "warning", solidHeader = TRUE,
-              withSpinner(DTOutput("table_preview2")))
-        ),
+        # fluidRow(
+        #   valueBoxOutput("vb_rows2"),
+        #   valueBoxOutput("vb_cols2"),
+        #   # valueBoxOutput("vb_mem2")
+        # ),
         fluidRow(
           box(width = 12, title = "Comparison Results", status = "info", solidHeader = TRUE,
               withSpinner(uiOutput("comparison_results")))
         )
       ),
       
-      tabItem(
-        tabName = "coverage",
-        fluidRow(
-          box(width = 12, title = "Time coverage (plots)", status = "info", solidHeader = TRUE,
-              uiOutput("time_cov_tabs")
-          )
-        ),
-        fluidRow(
-          box(width = 12, title = "Other dimensions (plots)", status = "info", solidHeader = TRUE,
-              uiOutput("other_cov_tabs")
-          )
-        )
-      ),
+      # tabItem(
+      #   tabName = "coverage",
+      #   fluidRow(
+      #     box(width = 12, title = "Time coverage (plots)", status = "info", solidHeader = TRUE,
+      #         uiOutput("time_cov_tabs")
+      #     )
+      #   )
+      #   ,
+      #   fluidRow(
+      #     box(width = 12, title = "Other dimensions (plots)", status = "info", solidHeader = TRUE,
+      #         uiOutput("other_cov_tabs")
+      #     )
+      #   )
+      # ),
       tabItem(
         tabName = "spatial",
         fluidRow(
@@ -134,27 +152,79 @@ ui <- dashboardPage(
 # ---- Server ----
 server <- function(input, output, session) {
   
-  # simple log helper
-  log_txt <- reactiveVal("")
-  append_log <- function(...) {
-    msg <- paste(format(Sys.time(), "%H:%M:%S"), "-", paste(..., collapse = " "))
-    old <- log_txt()
-    log_txt(paste0(old, if (nzchar(old)) "\n" else "", msg))
+  # --- MODE PRECHARGE DETECTE ICI ---
+  preload_mode <- isTRUE(PRELOAD_DATA) && exists("default_data") && !is.null(default_data) && is.list(default_data)
+  has_dataset1 <- preload_mode && !is.null(default_data$dataset1)
+  has_dataset2 <- preload_mode && !is.null(default_data$dataset2)
+  analysis <- reactiveVal(if (preload_mode && !is.null(PRELOADED_RESULT)) PRELOADED_RESULT else NULL)
+  # --- Ajuster l'UI si preload_mode ---
+  if (preload_mode) {
+    observe({
+      # cacher les uploads
+      shinyjs::hide("file_init")
+      shinyjs::hide("has_header")
+      shinyjs::hide("sep")
+      
+      shinyjs::hide("file_final")
+      shinyjs::hide("has_header2")
+      shinyjs::hide("sep2")
+      
+      # cacher paramètres "avancés" qu'on ne veut pas voir
+      shinyjs::hide("analysis_mode")
+      shinyjs::hide("time_cols")
+      shinyjs::hide("geo_dim")
+      shinyjs::hide("geo_group")
+      shinyjs::hide("fact")
+      shinyjs::hide("coverage")
+      shinyjs::hide("print_map")
+      shinyjs::hide("plotting_type")
+      shinyjs::hide("removemap")
+      shinyjs::hide("continent")
+      shinyjs::hide("debug_small")
+      shinyjs::hide("analysis_mode_block")
+      shinyjs::hide("analysis_parameter")
+      shinyjs::hide("Dataset_1_mode_block")
+      shinyjs::hide("Dataset_2_mode_block")
+      shinyjs::hide("requirement_bloc_mode_block")
+      shinyjs::hide("menu_spatial")
+      
+      # désactiver les titres (mais on les remplit)
+      shinyjs::hide("title1")
+      shinyjs::hide("title2")
+    })
+    
+    # pré-remplir titres + mode comparaison
+    observe({
+      params <- default_data$parameters
+      if (!is.null(params$title1)) {
+        updateTextInput(session, "title1", value = params$title1)
+      } else {
+        updateTextInput(session, "title1", value = "CAPTURED MAPPED")
+      }
+      if (!is.null(params$title2)) {
+        updateTextInput(session, "title2", value = params$title2)
+      } else if (has_dataset2) {
+        updateTextInput(session, "title2", value = "NCD MAPPED")
+      }
+      
+      updateRadioButtons(session, "analysis_mode", selected = "comparison")
+    })
   }
-  output$status_log <- renderText(log_txt())
   
-  observeEvent(input$clear_logs, { log_txt("") })
-  output$download_logs <- downloadHandler(
-    filename = function() sprintf("shiny_logs_%s.txt", format(Sys.time(), "%Y%m%d-%H%M%S")),
-    content = function(file) writeLines(log_txt(), file)
-  )
-  
-  # warn if package not present 
-  observe({
-    if (!requireNamespace("CWP.dataset", quietly = TRUE)) {
-      append_log("Package 'CWP.dataset' not installed. Functions with 'CWP.dataset::' may fail.")
-      showNotification("Package 'CWP.dataset' not installed.", type = "error", duration = 8)
-    }
+  # bannière en haut si mode préchargé
+  output$preload_banner <- renderUI({
+    if (!preload_mode) return(NULL)
+    tags$div(
+      style = "background-color:#d4edda;color:#155724;padding:10px;margin:10px;border-radius:6px;",
+      tags$strong("✅ Preloaded mode enabled."),
+      tags$br(),
+      tags$small(
+        paste0(
+          "Dataset 1: ", if (has_dataset1) paste0(nrow(default_data$dataset1), " rows, ", ncol(default_data$dataset1), " cols") else "missing",
+          if (has_dataset2) paste0(" | Dataset 2: ", nrow(default_data$dataset2), " rows, ", ncol(default_data$dataset2), " cols") else ""
+        )
+      )
+    )
   })
   
   # --- Client info / session diag ---
@@ -164,12 +234,11 @@ server <- function(input, output, session) {
       paste("url_hostname:", cd$url_hostname),
       paste("pixelratio:", cd$pixelratio),
       paste("browser version:", cd$browser$name, cd$browser$version),
-      paste("screen:", cd$screen$width, "x", cd$screen$height),
-      paste("output plot dims (summary):", paste(names(cd)[grepl("output_.*_width|output_.*_height", names(cd))][1:4], collapse=", "))
+      paste("screen:", cd$screen$width, "x", cd$screen$height)
     ), collapse = "\n")
   })
   
-  # --- Load dataset 1 ---
+  # --- Load dataset 1 (UPLOAD) ---
   load_dataset <- reactive({
     req(input$file_init)
     ext <- tools::file_ext(input$file_init$name)
@@ -193,7 +262,7 @@ server <- function(input, output, session) {
     }
   })
   
-  # --- Load dataset 2 ---
+  # --- Load dataset 2 (UPLOAD) ---
   load_dataset2 <- reactive({
     req(input$file_final)
     ext <- tools::file_ext(input$file_final$name)
@@ -217,119 +286,146 @@ server <- function(input, output, session) {
     }
   })
   
+  # --- DATASETS ACTIFS (UPLOAD OU PRECHARGES) ---
+  get_active_dataset1 <- reactive({
+    if (preload_mode && has_dataset1) {
+      default_data$dataset1
+    } else if (!is.null(input$file_init)) {
+      load_dataset()
+    } else {
+      NULL
+    }
+  })
+  
+  get_active_dataset2 <- reactive({
+    if (preload_mode && has_dataset2) {
+      default_data$dataset2
+    } else if (!is.null(input$file_final)) {
+      load_dataset2()
+    } else {
+      NULL
+    }
+  })
+  
+  # logs upload (mode upload uniquement)
   observeEvent(input$file_init, {
     info <- try(file.info(input$file_init$datapath), silent = TRUE)
-    append_log("File 1 uploaded:", input$file_init$name, "| ext:", tools::file_ext(input$file_init$name), "| size:", if (!inherits(info, "try-error")) format(info$size, big.mark = " ") else "?")
+    # append_log_local("File 1 uploaded:", input$file_init$name,
+    #                  "| ext:", tools::file_ext(input$file_init$name),
+    #                  "| size:", if (!inherits(info, "try-error")) format(info$size, big.mark = " ") else "?")
   })
   
   observeEvent(input$file_final, {
     info <- try(file.info(input$file_final$datapath), silent = TRUE)
-    append_log("File 2 uploaded:", input$file_final$name, "| ext:", tools::file_ext(input$file_final$name), "| size:", if (!inherits(info, "try-error")) format(info$size, big.mark = " ") else "?")
+    # append_log_local("File 2 uploaded:", input$file_final$name,
+    #                  "| ext:", tools::file_ext(input$file_final$name),
+    #                  "| size:", if (!inherits(info, "try-error")) format(info$size, big.mark = " ") else "?")
   })
   
+  # --- PREVIEW TABLES ---
   output$table_preview <- renderDT({
-    req(input$file_init)
-    datatable(load_dataset(), options = list(pageLength = 10, scrollX = TRUE), filter = "top")
+    df <- get_active_dataset1()
+    req(df)
+    datatable(
+      utils::head(df, 5),
+      options = list(pageLength = 5, scrollX = TRUE, searching = FALSE),
+      filter = "none"
+    )
   })
   
-  output$table_preview2 <- renderDT({
-    req(input$file_final)
-    datatable(load_dataset2(), options = list(pageLength = 10, scrollX = TRUE), filter = "top")
+  output$table_preview2_home <- renderDT({
+    df2 <- get_active_dataset2()
+    if (is.null(df2)) return(NULL)
+    datatable(
+      utils::head(df2, 5),
+      options = list(pageLength = 5, scrollX = TRUE, searching = FALSE),
+      filter = "none"
+    )
   })
   
-  # --- Populate dynamic filter choices ---
+  # --- Populate dynamic filter choices + valueBoxes dataset1 ---
   observe({
-    df <- try(load_dataset(), silent = TRUE)
-    if (inherits(df, "data.frame")) {
-      output$vb_rows <- renderValueBox({ valueBox(format(nrow(df), big.mark = " "), "Rows Dataset 1", icon = icon("hashtag"), color = "purple") })
-      output$vb_cols <- renderValueBox({ valueBox(format(ncol(df), big.mark = " "), "Columns Dataset 1", icon = icon("table"), color = "purple") })
-      mem <- format(object.size(df), units = "auto")
-      output$vb_mem <- renderValueBox({ valueBox(mem, "Approx. size Dataset 1", icon = icon("database"), color = "purple") })
-      if ("species" %in% names(df)) updateSelectizeInput(session, "species", choices = sort(unique(df$species)), server = TRUE)
-      if ("fishing_fleet" %in% names(df)) updateSelectizeInput(session, "fleet", choices = sort(unique(df$fishing_fleet)), server = TRUE)
-    }
+    df <- get_active_dataset1()
+    if (!inherits(df, "data.frame")) return()
+    
+    output$vb_rows <- renderValueBox({ valueBox(format(nrow(df), big.mark = " "), "Rows Dataset 1", icon = icon("hashtag"), color = "purple") })
+    output$vb_cols <- renderValueBox({ valueBox(format(ncol(df), big.mark = " "), "Columns Dataset 1", icon = icon("table"), color = "purple") })
+    mem <- format(object.size(df), units = "auto")
+    output$vb_mem <- renderValueBox({ valueBox(mem, "Approx. size Dataset 1", icon = icon("database"), color = "purple") })
+    
+    if ("species" %in% names(df)) updateSelectizeInput(session, "species", choices = sort(unique(df$species)), server = TRUE)
+    if ("fishing_fleet" %in% names(df)) updateSelectizeInput(session, "fleet", choices = sort(unique(df$fishing_fleet)), server = TRUE)
   })
   
+  # --- valueBoxes dataset2 ---
   observe({
-    df2 <- try(load_dataset2(), silent = TRUE)
-    if (inherits(df2, "data.frame")) {
-      output$vb_rows2 <- renderValueBox({ valueBox(format(nrow(df2), big.mark = " "), "Rows Dataset 2", icon = icon("hashtag"), color = "orange") })
-      output$vb_cols2 <- renderValueBox({ valueBox(format(ncol(df2), big.mark = " "), "Columns Dataset 2", icon = icon("table"), color = "orange") })
-      mem <- format(object.size(df2), units = "auto")
-      output$vb_mem2 <- renderValueBox({ valueBox(mem, "Approx. size Dataset 2", icon = icon("database"), color = "orange") })
-    }
+    df2 <- get_active_dataset2()
+    if (!inherits(df2, "data.frame")) return()
+    
+    output$vb_rows2 <- renderValueBox({ valueBox(format(nrow(df2), big.mark = " "), "Rows Dataset 2", icon = icon("hashtag"), color = "orange") })
+    output$vb_cols2 <- renderValueBox({ valueBox(format(ncol(df2), big.mark = " "), "Columns Dataset 2", icon = icon("table"), color = "orange") })
+    mem <- format(object.size(df2), units = "auto")
+    output$vb_mem2 <- renderValueBox({ valueBox(mem, "Approx. size Dataset 2", icon = icon("database"), color = "orange") })
   })
   
   # --- Button click tracer ---
   observeEvent(input$run_btn, {
     mode <- input$analysis_mode
-    append_log("Button clicked. Mode:", mode,
-               paste0("time_cols=", paste(input$time_cols, collapse=",")),
-               paste0("geo_dim=", input$geo_dim),
-               paste0("geo_group=", input$geo_group),
-               paste0("fact=", input$fact),
-               paste0("coverage=", input$coverage),
-               paste0("print_map=", input$print_map),
-               paste0("plotting_type=", input$plotting_type),
-               paste0("species_n=", length(input$species)),
-               paste0("fleet_n=", length(input$fleet)),
-               paste0("debug_small=", input$debug_small))
+    # append_log_local("Button clicked. Mode:", mode,
+    #                  paste0("time_cols=", paste(input$time_cols, collapse=",")),
+    #                  paste0("geo_dim=", input$geo_dim),
+    #                  paste0("geo_group=", input$geo_group),
+    #                  paste0("fact=", input$fact),
+    #                  paste0("coverage=", input$coverage),
+    #                  paste0("print_map=", input$print_map),
+    #                  paste0("plotting_type=", input$plotting_type),
+    #                  paste0("species_n=", length(input$species)),
+    #                  paste0("fleet_n=", length(input$fleet)),
+    #                  paste0("debug_small=", input$debug_small))
   }, ignoreInit = TRUE)
   
   # --- Run analysis avec mode unique ou comparaison ---
-  analysis <- eventReactive(input$run_btn, {
-    mode <- input$analysis_mode
+  observeEvent(input$run_btn, {
+    # mode forcé en comparaison si preload_mode
+    mode <- if (preload_mode) "comparison" else input$analysis_mode
+    
+    # valeurs par défaut (ou paramètres UI si pas preload)
+    time_cols <- if (!is.null(input$time_cols)) input$time_cols else "time_start"
+    geo_dim   <- if (!is.null(input$geo_dim))   input$geo_dim   else "geographic_identifier"
+    geo_group <- if (!is.null(input$geo_group)) input$geo_group else "gridtype"
+    fact      <- if (!is.null(input$fact))      input$fact      else "catch"
+    plotting  <- if (!is.null(input$plotting_type)) input$plotting_type else "view"
+    coverage  <- if (!is.null(input$coverage)) isTRUE(input$coverage) else TRUE
+    removemap <- if (!is.null(input$removemap)) isTRUE(input$removemap) else FALSE
+    debug_small <- if (!is.null(input$debug_small)) isTRUE(input$debug_small) else FALSE
+    continent_input <- if (!is.null(input$continent)) input$continent else ""
+    parameter_colnames_to_keep <- if (PRELOAD_DATA) c("fishing_fleet", "Ocean", "species_name") else "all"
+    
+    df <- get_active_dataset1()
+    if (is.null(df)) {
+      showNotification("Dataset 1 is missing (neither preloaded nor uploaded).", type = "error")
+      return()
+    }
     
     if (mode == "unique") {
-      # Mode unique - seulement dataset 1
-      if (is.null(input$file_init)) {
-        showNotification("Upload dataset 1 first.", type = "error")
-        append_log("Run aborted: no dataset 1 uploaded.")
-        return(NULL)
-      }
-      
-      df <- try(load_dataset(), silent = TRUE)
-      if (!inherits(df, "data.frame")) {
-        showNotification("Could not read dataset 1 (CSV/RDS/RData).", type = "error")
-        append_log("Run aborted: dataset 1 couldn't be read.")
-        return(NULL)
-      }
-      
-      parameter_final <- df  # Même dataset pour unique_analyse = TRUE
-      
+      parameter_final <- df
     } else {
-      # Mode comparaison - besoin des deux datasets
-      if (is.null(input$file_init) || is.null(input$file_final)) {
-        showNotification("Upload both datasets for comparison.", type = "error")
-        append_log("Run aborted: need both datasets for comparison.")
-        return(NULL)
+      parameter_final <- get_active_dataset2()
+      if (is.null(parameter_final)) {
+        showNotification("Dataset 2 is missing for comparison (neither preloaded nor uploaded).", type = "error")
+        return()
       }
-      
-      df <- try(load_dataset(), silent = TRUE)
-      df2 <- try(load_dataset2(), silent = TRUE)
-      
-      if (!inherits(df, "data.frame") || !inherits(df2, "data.frame")) {
-        showNotification("Could not read one or both datasets.", type = "error")
-        append_log("Run aborted: one or both datasets couldn't be read.")
-        return(NULL)
-      }
-      
-      parameter_final <- df2  # Dataset différent pour unique_analyse = FALSE
     }
     
     if (!"measurement_value" %in% names(df)) {
       showNotification("Missing required column: 'measurement_value' in dataset 1.", type = "error", duration = 8)
-      append_log("Run aborted: missing 'measurement_value' in dataset 1.")
-      return(NULL)
+      return()
     }
     
-    if (isTRUE(input$debug_small) && nrow(df) > 5000) {
-      append_log("DEBUG: subsetting dataset 1 to first 5000 rows (debug_small)")
+    if (isTRUE(debug_small) && nrow(df) > 5000) {
       df <- utils::head(df, 5000)
     }
-    
-    if (mode == "comparison" && isTRUE(input$debug_small) && nrow(parameter_final) > 5000) {
-      append_log("DEBUG: subsetting dataset 2 to first 5000 rows (debug_small)")
+    if (mode == "comparison" && isTRUE(debug_small) && nrow(parameter_final) > 5000) {
       parameter_final <- utils::head(parameter_final, 5000)
     }
     
@@ -338,17 +434,14 @@ server <- function(input, output, session) {
       fishing_fleet = if (length(input$fleet) > 0) input$fleet else NULL
     )
     
-    append_log("Launching analysis (mode:", mode, ")... dataset1 rows=", nrow(df), "dataset2 rows=", nrow(parameter_final))
     t0 <- Sys.time()
     
     withProgress(message = if (mode == "unique") "Running unique analysis..." else "Running comparison...", value = 0.1, {
-      res <- NULL
-      cap <- NULL
       tmp <- tryCatch(
         {
-          pm <- if (isTRUE(input$print_map)) {
-            showNotification("print_map=TRUE mais aucun shapefile fourni → désactivation pour éviter l'erreur 'Please provide a shape for the polygons'.", type = "warning", duration = 6)
-            append_log("No shapefile provided: forcing print_map=FALSE")
+          pm <- if (isTRUE(input$print_map) && !is.null(shapefile.fix)) {
+            TRUE
+          } else if (isTRUE(input$print_map) && is.null(shapefile.fix)) {
             FALSE
           } else FALSE
           
@@ -356,80 +449,90 @@ server <- function(input, output, session) {
             parameter_init = df,
             parameter_final = parameter_final,
             fig.path = getwd(),
-            parameter_fact = input$fact,
+            parameter_fact = fact,
             parameter_short = FALSE,
             parameter_columns_to_keep = c("Precision","measurement_unit","Values dataset 1","Values dataset 2","Loss / Gain","Difference (in %)","Dimension","Difference in value"),
             parameter_diff_value_or_percent = "Difference (in %)",
             parameter_filtering = filt,
-            parameter_time_dimension = input$time_cols,
-            parameter_geographical_dimension = input$geo_dim,
-            parameter_geographical_dimension_groupping = input$geo_group,
+            parameter_time_dimension = time_cols,
+            parameter_geographical_dimension = geo_dim,
+            parameter_geographical_dimension_groupping = geo_group,
             parameter_colnames_to_keep = "all",
             outputonly = FALSE,
-            plotting_type = input$plotting_type,
+            plotting_type = plotting,
             print_map = pm,
             shapefile_fix = shapefile.fix,
-            continent = continent,
-            coverage = isTRUE(input$coverage),
+            continent = continent_input,
+            coverage = isTRUE(coverage),
             parameter_resolution_filter = NULL,
             parameter_titre_dataset_1 = input$title1,
             parameter_titre_dataset_2 = input$title2,
-            unique_analyse = (mode == "unique"),  # TRUE pour unique, FALSE pour comparaison
-            removemap = isTRUE(input$removemap),
+            unique_analyse = (mode == "unique"),
+            removemap = isTRUE(removemap),
             topnumber = 6
           )
+          r$summary_of_differences <- 
+            r$summary_of_differences %>%
+            dplyr::mutate(across(where(is.numeric), ~ round(.x, 2)))%>%
+            dplyr::mutate(across(
+              where(is.numeric),
+              ~ format(.x, big.mark = " ", scientific = FALSE)
+            ))
+          
           list(res = r)
         },
         error = function(e) {
           showModal(modalDialog(title = "Analysis error", easyClose = TRUE,
                                 tagList(tags$pre(conditionMessage(e)))))
-          append_log(paste("ERROR:", conditionMessage(e)))
           NULL
         }
       )
       
       res <- if (is.null(tmp)) NULL else tmp$res
-      cap <- if (!is.null(res)) utils::capture.output(utils::str(res, max.level = 1)) else character(0)
-      
-      if (!is.null(cap) && length(cap) > 0) {
-        append_log(paste0("Console output (first 10 lines):\n", paste(utils::head(cap, 10), collapse = "\n")))
-        if (length(cap) > 10) append_log(paste("... (", length(cap)-10, "more lines)"))
-      }
-      
-      incProgress(0.8)
-      t1 <- Sys.time()
-      append_log("Analysis finished in", round(as.numeric(difftime(t1, t0, units = "secs")), 2), "sec")
       
       if (!is.list(res)) {
-        append_log("No result returned (NULL or non-list).")
-        return(NULL)
+        return()
       }
       
-      # quick result stats
-      keys <- c("time_coverage_analysis_list","other_dimension_analysis_list","spatial_coverage_analysis_list","combined_summary_histogram")
-      for (k in keys) append_log("Result has", k, ":", if (!is.null(res[[k]])) "YES" else "NO")
+      # ⬅️ c’est ici qu’on met à jour le reactiveVal
+      analysis(res)
       
-      res
+      incProgress(0.9)
     })
   }, ignoreInit = TRUE)
+  
+  if (preload_mode && has_dataset1 && has_dataset2) {
+    observeEvent(TRUE, {
+      updateRadioButtons(session, "analysis_mode", selected = "comparison")
+      # append_log_local("Auto-running analysis in preloaded comparison mode...")
+      session$sendCustomMessage("autoClick", "run_btn")
+    }, once = TRUE)
+  }
   
   # --- Output pour l'onglet Comparaison ---
   output$comparison_results <- renderUI({
     res <- analysis()
-    mode <- input$analysis_mode
     
-    if (is.null(res) || mode == "unique") {
-      return(tags$em("No comparison results available. Run analysis in comparison mode first."))
+    # 1. Rien du tout
+    if (is.null(res)) {
+      return(tags$em("No analysis result available yet. Run an analysis first."))
     }
     
-    # Vérifier que les objets de comparaison existent
+    # 2. Vérifier que les objets de comparaison existent
     has_comparison_data <- !is.null(res$summary_of_differences) || 
       !is.null(res$compare_strata_differences_list) ||
       !is.null(res$compare_dimension_differences_list) ||
       !is.null(res$Geographicdiff)
     
     if (!has_comparison_data) {
-      return(tags$em("No specific comparison data found in results."))
+      # Petit debug utile pour toi :
+      return(tagList(
+        tags$em("No specific comparison data found in results."),
+        tags$br(),
+        tags$small(
+          paste("Result elements:", paste(names(res), collapse = ", "))
+        )
+      ))
     }
     
     tagList(
@@ -437,12 +540,6 @@ server <- function(input, output, session) {
       if (!is.null(res$summary_of_differences)) {
         box(width = 12, title = "Summary of Differences", status = "primary", solidHeader = TRUE,
             DTOutput("summary_differences_table"))
-      },
-      
-      # Combined summary histogram
-      if (!is.null(res$combined_summary_histogram)) {
-        box(width = 12, title = "Combined Summary Histogram", status = "info", solidHeader = TRUE,
-            plotOutput("comp_combined_summary_plot", height = 400))
       },
       
       # Strata differences
@@ -453,12 +550,32 @@ server <- function(input, output, session) {
       
       # Temporal differences
       if (!is.null(res$plot_titles_list) && !is.null(res$plot_titles_list$plots)) {
-        box(width = 12, title = "Temporal Differences", status = "success", solidHeader = TRUE,
-            uiOutput("temporal_differences_ui"))
+        fluidRow(
+          
+          # --- Bloc de gauche : temporal plots ---
+          column(
+            width = 6,
+            box(
+              width = 12, title = "Temporal Differences",
+              status = "success", solidHeader = TRUE,
+              uiOutput("temporal_differences_ui")
+            )
+          ),
+          
+          column(
+            width = 6,
+            box(
+              width = 12, title = "Temporal coverage",
+              status = "primary", solidHeader = TRUE,
+              uiOutput("time_cov_tabs")   
+            )
+          )
+          
+        )
       },
       
       # Geographic differences
-      if (!is.null(res$Geographicdiff)) {
+      if (!is.null(res$Geographicdiff) | !PRELOAD_DATA) {
         box(width = 12, title = "Geographic Differences", status = "danger", solidHeader = TRUE,
             plotOutput("geographic_diff_plot", height = 500),
             htmlOutput("geographic_diff_title"))
@@ -469,8 +586,17 @@ server <- function(input, output, session) {
         box(width = 12, title = "Dimension Differences", status = "info", solidHeader = TRUE,
             uiOutput("dimension_differences_ui"))
       }
+      ,
+      
+      # Combined summary histogram
+      if (!is.null(res$combined_summary_histogram) & !PRELOAD_DATA) {
+        browser()
+        box(width = 12, title = "Combined Summary Histogram", status = "info", solidHeader = TRUE,
+            plotOutput("comp_combined_summary_plot", height = 400))
+      }
     )
   })
+  
   
   # --- Summary differences table ---
   output$summary_differences_table <- renderDT({
@@ -490,14 +616,14 @@ server <- function(input, output, session) {
     ) %>%
       formatStyle(
         'Difference',
-        backgroundColor = styleInterval(0, c('#ffcccc', '#ccffcc'))
+        backgroundColor = styleInterval(0, c( '#ccffcc','#ffcccc'))
       )
   })
   
   # --- Combined summary plot for comparison ---
   output$comp_combined_summary_plot <- renderPlot({
     res <- analysis()
-    if (is.null(res$combined_summary_histogram)) return(NULL)
+    if (is.null(res$combined_summary_histogram) | PRELOAD_DATA) return(NULL)
     
     # Sauvegarder et restaurer le titre si nécessaire
     original_title <- res$combined_summary_histogram$labels$title
@@ -519,9 +645,13 @@ server <- function(input, output, session) {
     strata_list <- res$compare_strata_differences_list
     
     tagList(
+      # Table number_init_column_final_column
+      if (!is.null(strata_list$number_init_column_final_column)) {
+        DTOutput("strata_numbers_table")
+      },
       # Message sur les strates perdues/trouvées
       if (!is.null(strata_list$strates_perdues_first_10) && nrow(strata_list$strates_perdues_first_10) != 0) {
-        tags$p(style = "font-weight: bold;",
+        tags$p(style = "font-weight: bold;color: grey;",
                "The strata differences (completely lost or appearing) between the first one and the second one (representing ",
                round(strata_list$pourcentage_strates_perdues), "% of the total number of strata) are:")
       } else {
@@ -531,11 +661,6 @@ server <- function(input, output, session) {
       # Table disapandap si disponible
       if (!is.null(strata_list$disapandap) && nrow(strata_list$disapandap) > 0) {
         DTOutput("strata_disapandap_table")
-      },
-      
-      # Table number_init_column_final_column
-      if (!is.null(strata_list$number_init_column_final_column)) {
-        DTOutput("strata_numbers_table")
       }
     )
   })
@@ -587,7 +712,7 @@ server <- function(input, output, session) {
     })
     
     tagList(
-      tags$p(style = "font-weight: bold;", "Representing the differences in percent for each year."),
+      tags$p(style = "font-weight: bold; color: grey ;", "Representing the differences in percent for each year."),
       do.call(tabsetPanel, c(tabs, list(id = "temporal_plots_tabset")))
     )
   })
@@ -657,9 +782,6 @@ server <- function(input, output, session) {
       )
   })
   
-  # [Le reste du code pour les onglets existants reste inchangé...]
-  # ... (time_cov_tabs, other_cov_tabs, spatial_cov_plot, combined_summary_plot, etc.)
-  
   # ---- Onglets dynamiques : TIME ----
   output$time_cov_tabs <- renderUI({
     res <- analysis()
@@ -700,46 +822,6 @@ server <- function(input, output, session) {
     }
   })
   
-  # ---- Onglets dynamiques : OTHER DIMENSIONS ----
-  output$other_cov_tabs <- renderUI({
-    res <- analysis()
-    if (is.null(res) || is.null(res$other_dimension_analysis_list) ||
-        is.null(res$other_dimension_analysis_list$figures)) {
-      return(tags$em("No dimension plots"))
-    }
-    figs <- res$other_dimension_analysis_list$figures
-    n    <- length(figs)
-    labs <- res$other_dimension_analysis_list$dimension_title_subfigures
-    if (is.null(labs) || length(labs) != n) labs <- paste("Figure", seq_len(n))
-    
-    tabs <- lapply(seq_len(n), function(i) {
-      tabPanel(
-        labs[[i]],
-        withSpinner(plotOutput(paste0("other_plot_", i), height = 420), hide.ui = FALSE)
-      )
-    })
-    do.call(tabsetPanel, c(tabs, list(id = "other_cov_tabset", type = "pills")))
-  })
-  
-  observeEvent(analysis(), {
-    res <- analysis()
-    if (is.null(res) || is.null(res$other_dimension_analysis_list) ||
-        is.null(res$other_dimension_analysis_list$figures)) return()
-    
-    figs <- res$other_dimension_analysis_list$figures
-    for (i in seq_along(figs)) {
-      local({
-        ii <- i
-        output[[paste0("other_plot_", ii)]] <- renderPlot({
-          p <- figs[[ii]]
-          p <- if (inherits(p, "gg") || inherits(p, "ggplot")) p else render_any_plot(p)
-          print(p)
-        }, res = 96, execOnResize = FALSE)
-        outputOptions(output, paste0("other_plot_", ii), suspendWhenHidden = FALSE)
-      })
-    }
-  })
-  
   # --- Spatial coverage ---
   output$spatial_cov_plot <- renderPlot({
     res <- analysis()
@@ -755,12 +837,8 @@ server <- function(input, output, session) {
   })
   
   # session end
-  outputOptions(output, "spatial_cov_plot", suspendWhenHidden = FALSE)
-  outputOptions(output, "combined_summary_plot", suspendWhenHidden = FALSE)
-  
-  session$onSessionEnded(function() {
-    append_log("Session ended.")
-  })
+  # outputOptions(output, "spatial_cov_plot", suspendWhenHidden = FALSE)
+  # outputOptions(output, "combined_summary_plot", suspendWhenHidden = FALSE)
+  # 
 }
-
 shinyApp(ui, server)
