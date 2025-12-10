@@ -1,0 +1,152 @@
+# syntax=docker/dockerfile:1.7
+
+ARG MODE=prod
+ARG BASE_IMAGE
+
+#############################
+# 1) Stage "data from the paper IOTC"      #
+#############################
+FROM ghcr.io/bastienird/gta_nc_datafrompaper:latest AS datafrompaper
+# On ne fait rien ici : on va juste copier des fichiers depuis ce stage
+
+
+#############################
+# 2) Stage final (runtime)  #
+#############################
+FROM ${BASE_IMAGE:-rocker/r-ver:4.2.3} AS final
+
+# Re-declare arguments in this stage
+ARG MODE
+ARG RENV_LOCK_HASH
+ARG TEST_SCRIPT_REF=main
+ARG TEST_SCRIPT_URL="https://raw.githubusercontent.com/firms-gta/tunaatlas_pie_map_shiny/${TEST_SCRIPT_REF}/testing_loading_of_all_packages.R"
+ARG BRANCH
+
+# Install system libraries
+RUN apt-get update && apt-get install -y \
+    libxml2-dev \
+    libx11-dev \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    make \
+    zlib1g-dev \
+    libsecret-1-dev \
+    pandoc \
+    cmake \
+    libgdal-dev \
+    gdal-bin \
+    libgeos-dev \
+    libproj-dev \
+    libsqlite3-dev \
+    libicu-dev \
+    libudunits2-dev \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/*
+
+# httpuv for Shiny / Rserve etc.
+RUN install2.r --error --skipinstalled --ncpus -1 httpuv
+
+WORKDIR /root/DashboardCWPdataset
+
+# jsonlite for reading renv.lock
+RUN Rscript -e "install.packages('remotes', repos='https://cloud.r-project.org'); \
+                remotes::install_version('jsonlite', version = '2.0.0', upgrade = 'never', repos = 'https://cran.r-project.org')"
+
+# -------------------------
+# renv : config build-time
+# -------------------------
+
+# Using renv local in project
+ENV RENV_PATHS_ROOT=/root/DashboardCWPdataset/renv
+ENV RENV_PATHS_CACHE=/root/DashboardCWPdataset/renv/library
+ENV RENV_CONFIG_CACHE_ENABLED=FALSE
+ENV MODE=${MODE}
+ENV BUILD_BRANCH=${BRANCH}
+
+RUN mkdir -p "${RENV_PATHS_ROOT}" "${RENV_PATHS_CACHE}"
+
+# Copy renv file fist for caching
+COPY renv.lock ./
+COPY renv/activate.R renv/
+COPY renv/settings.json renv/
+
+# Calculating renv hash
+RUN if [ -z "${RENV_LOCK_HASH}" ]; then \
+      export RENV_LOCK_HASH=$(sha256sum renv.lock | cut -d' ' -f1); \
+    fi && \
+    echo "RENV_LOCK_HASH=${RENV_LOCK_HASH}" > /tmp/renv_lock_hash.txt
+
+# Installing correct renv version defined in renv.lock
+RUN Rscript -e "install.packages('remotes', repos='https://cloud.r-project.org')" && \
+    Rscript -e "remotes::install_version('renv', version = jsonlite::fromJSON('renv.lock')\$Packages[['renv']]\$Version, repos = 'https://cran.r-project.org')"
+
+# Activer et restaurer l'environnement renv
+RUN R -e "renv::activate()" && \
+    R -e "renv::restore()" && \
+    R -e 'renv::repair(); renv::isolate(); renv::status()'
+
+# -------------------------
+# MODE=dev : config rstudio
+# -------------------------
+RUN if [ "$MODE" = "dev" ]; then \
+      mkdir -p /home/rstudio/.cache/R/renv && \
+      mkdir -p /home/rstudio/DashboardCWPdataset/renv/library && \
+      chown -R rstudio:rstudio /home/rstudio && \
+      printf '%s\n' \
+        "RENV_CONFIG_CACHE_ENABLED=FALSE" \
+        "RENV_PATHS_ROOT=/home/rstudio/DashboardCWPdataset/renv" \
+        "RENV_PATHS_CACHE=/home/rstudio/DashboardCWPdataset/renv/library" \
+        > /home/rstudio/.Renviron ; \
+    fi
+
+# -------------------------
+# Copy project shiny app dashboard         #
+# -------------------------
+# NB: COPY . . including DOI.csv, data/, global.R, entrypoint.sh, etc.
+COPY . . 
+
+# Creating data repo
+RUN mkdir -p data 
+
+# -------------------------
+# Copying qs from the datafrompaper docker image as no DOI for now on the FS dataset
+# -------------------------
+COPY --from=datafrompaper /root/GTA_NC_datafrompaper/inputs/data/GTA/NCD_MAPPED.qs ./data/NCD_MAPPED.qs
+COPY --from=datafrompaper /root/GTA_NC_datafrompaper/inputs/data/FSJ/FS_MAPPED.qs   ./data/FS_MAPPED.qs
+
+RUN echo "✅ Listing files in ./data after adding mapped QS:" && ls -lh ./data
+
+# -------------------------
+# Test of loading of the packages (if packages copied from local which is not the case yet in this dockerfile but could be, anyway it is still a good testing)
+# -------------------------
+RUN R -e "source(url('$TEST_SCRIPT_URL'), local=TRUE, encoding='UTF-8')"
+
+RUN echo "✅ MODE is: $MODE" && echo "✅ BRANCH is: $BRANCH" && echo "✅ BUILD_BRANCH is: $BUILD_BRANCH"
+
+# -------------------------
+# Loading with global.R
+# -------------------------
+RUN Rscript global.R
+
+# Eventuel filtrage en fonction de la branche (comme tu avais)
+RUN R -e "if (Sys.getenv('BUILD_BRANCH') == 'dev') { \
+            library(dplyr); library(here); \
+            full <- qs::qread(here::here('data/default_dataset.qs')); \
+            full <- dplyr::filter(full, fishing_fleet == 'EUFRA - France (EU)'); \
+            qs::qsave(full, here::here('data/default_dataset.qs')); \
+            file.remove(here::here('data/data.qs')); \
+            source(here::here('create_or_load_default_dataset.R')); \
+          }"
+
+RUN echo '✅ Final data content in ./data:' && ls -lh ./data
+
+RUN mkdir -p /etc/DashboardCWPdataset/
+
+RUN if [ "$MODE" = "dev" ]; then R -e "renv::isolate()"; fi
+
+EXPOSE 3838
+EXPOSE 8787
+
+# ENTRYPOINT
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
