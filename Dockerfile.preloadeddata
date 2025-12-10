@@ -126,16 +126,6 @@ RUN echo "✅ MODE is: $MODE" && echo "✅ BRANCH is: $BRANCH" && echo "✅ BUIL
 # -------------------------
 RUN Rscript global.R
 
-# Eventuel filtrage en fonction de la branche (comme tu avais)
-RUN R -e "if (Sys.getenv('BUILD_BRANCH') == 'dev') { \
-            library(dplyr); library(here); \
-            full <- qs::qread(here::here('data/default_dataset.qs')); \
-            full <- dplyr::filter(full, fishing_fleet == 'EUFRA - France (EU)'); \
-            qs::qsave(full, here::here('data/default_dataset.qs')); \
-            file.remove(here::here('data/data.qs')); \
-            source(here::here('create_or_load_default_dataset.R')); \
-          }"
-
 RUN echo '✅ Final data content in ./data:' && ls -lh ./data
 
 RUN mkdir -p /etc/DashboardCWPdataset/
@@ -146,5 +136,5 @@ EXPOSE 3838
 EXPOSE 8787
 
 # ENTRYPOINT
-RUN chmod +x /entrypoint.sh
-ENTRYPOINT ["/entrypoint.sh"]
+# RUN chmod +x entrypoint.sh
+# ENTRYPOINT ["./entrypoint.sh"]
