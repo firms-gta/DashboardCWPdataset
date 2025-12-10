@@ -93,7 +93,7 @@ RUN R -e "source(url('$TEST_SCRIPT_URL'), local=TRUE, encoding='UTF-8')"
 
 COPY ./* ./
 
-# RUN Rscript global.R
+RUN Rscript global.R
 
 ARG BRANCH
 ENV BUILD_BRANCH=${BRANCH}
