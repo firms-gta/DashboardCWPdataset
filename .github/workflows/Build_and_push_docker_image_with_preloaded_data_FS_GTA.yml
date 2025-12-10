@@ -17,6 +17,12 @@ on:
         required: true
         default: "build" 
 
+permissions:
+  contents: write
+  packages: write
+  pages: write
+  id-token: write
+
 env:
   CACHE_IMAGE: ghcr.io/bastienird/dashboardcwpdatasetpreloadeddatafsgta-cache
   DOCKER_BUILDKIT: 1
@@ -72,7 +78,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_TOKEN }}
+          password: ${{ secrets.GHCR_PAT || secrets.GHCR_TOKEN || github.token }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
