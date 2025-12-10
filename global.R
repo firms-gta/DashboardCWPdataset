@@ -19,8 +19,8 @@ options(shiny.maxRequestSize = 200*1024^2)  # 200 MB upload limit
 PRELOAD_DATA <- Sys.getenv("SHINY_PRELOAD_DATA", "TRUE") == "FALSE"
 PRELOAD_DATA_PATH <- Sys.getenv("SHINY_PRELOAD_DATA_PATH", "data/")
 
-source("R/load_default_data.R")
-source("R/load_parameters_from_csv.R")
+source(here::here("R/load_default_data.R"))
+source(here::here("R/load_parameters_from_csv.R"))
 
 # Variables globales (comme avant)
 shapefile.fix <- NULL
