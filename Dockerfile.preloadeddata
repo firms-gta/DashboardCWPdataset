@@ -6,9 +6,7 @@ ARG BASE_IMAGE
 #############################
 # 1) Stage "data from the paper IOTC"      #
 #############################
-FROM ghcr.io/bastienird/gta_nc_datafrompaper:latest AS datafrompaper
-# On ne fait rien ici : on va juste copier des fichiers depuis ce stage
-
+FROM ghcr.io/bastienird/gta_nc_datapaper:latest AS datafrompaper
 
 #############################
 # 2) Stage final (runtime)  #
@@ -111,8 +109,8 @@ RUN mkdir -p data
 # -------------------------
 # Copying qs from the datafrompaper docker image as no DOI for now on the FS dataset
 # -------------------------
-COPY --from=datafrompaper /root/GTA_NC_datafrompaper/inputs/data/GTA/NCD_MAPPED.qs ./data/NCD_MAPPED.qs
-COPY --from=datafrompaper /root/GTA_NC_datafrompaper/inputs/data/FSJ/FS_MAPPED.qs   ./data/FS_MAPPED.qs
+COPY --from=datafrompaper /root/gta_nc_datapaper/inputs/data/GTA/NCD_MAPPED.qs ./data/NCD_MAPPED.qs
+COPY --from=datafrompaper /root/gta_nc_datapaper/inputs/data/FSJ/FS_MAPPED.qs   ./data/FS_MAPPED.qs
 
 RUN echo "✅ Listing files in ./data after adding mapped QS:" && ls -lh ./data
 
