@@ -1,100 +1,35 @@
-FROM ghcr.io/bastienird/gta_nc_datapaper:latest AS builder
-COPY inputs/data/GTA/NCD_MAPPED.qs /root/DashboardCWPdataset/data/NCD_MAPPED.qs
-COPY inputs/data/FSJ/FS_MAPPED.qs /root/DashboardCWPdataset/data/FS_MAPPED.qs
-
-WORKDIR /root/DahsboardCWPdataset
-RUN mkdir -p /tmp/flattened_lib \
- && cp -LR renv/library/R-4.2/x86_64-pc-linux-gnu/* /tmp/flattened_lib/
-
+# syntax=docker/dockerfile:1.7
+ARG MODE=prod
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE:-rocker/r-ver:4.2.3}
 
 # Install system libraries
-RUN apt-get update && apt-get install -y \
-    sudo \
-    pandoc \
-    pandoc-citeproc \
-    libssl-dev \
-    libcurl4-gnutls-dev \
-    libxml2-dev \
-    libudunits2-dev \
-    libproj-dev \
-    libgeos-dev \
-    libgdal-dev \
-    libv8-dev \
-    libsodium-dev \
-    libsecret-1-dev \
-    git \
-    libnetcdf-dev \
-    curl \
-    udunits-bin \
-    gdal-bin \
-    libjq-dev \
-    cmake \
-    protobuf-compiler \
-    libprotobuf-dev \
-    wget \
-    librdf0 \
-    librdf0-dev \
-    libtbb-dev \
-    libzmq3-dev \
-    libpoppler-cpp-dev \
-    redland-utils \
-    dos2unix && \
-    apt-get clean
+apt-get update && apt-get install -y \
+  libxml2-dev \
+  libx11-dev \
+  libcurl4-openssl-dev \
+  libssl-dev \
+  make \
+  zlib1g-dev \
+  libsecret-1-dev \
+  pandoc \
+  cmake \
+  libgdal-dev \
+  gdal-bin \
+  libgeos-dev \
+  libproj-dev \
+  libsqlite3-dev \
+  libicu-dev \
+  libudunits2-dev \
+  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 RUN install2.r --error --skipinstalled --ncpus -1 httpuv
 
 WORKDIR /root/DashboardCWPdataset
 
-RUN Rscript -e "install.packages('remotes', repos='https://cloud.r-project.org'); \
-                remotes::install_version('qs', version = '0.26.3', upgrade = 'never', repos = 'https://cran.r-project.org'); \
-                remotes::install_version('jsonlite', version = '1.9.1', upgrade = 'never', repos = 'https://cran.r-project.org'); \
-                remotes::install_version('readr', version = '2.1.5', upgrade = 'never', repos = 'https://cran.r-project.org')"
-
-ARG DOI_CSV_HASH
-RUN echo "DOI_CSV_HASH=${DOI_CSV_HASH}" > /tmp/doi_csv_hash.txt
+RUN Rscript -e "install.packages('remotes', repos='https://cloud.r-project.org')"
 
 RUN mkdir -p data 
-COPY DOI.csv ./DOI.csv
-COPY data/ ./data/
-
-RUN dos2unix DOI.csv && sed -i -e '$a\' DOI.csv
-
-RUN bash -c "tail -n +2 DOI.csv | tr -d '\r' | \
-    while IFS=',' read -r DOI FILE; do \
-        RECORD_ID=\$(echo \"\$DOI\" | awk -F/ '{print \$NF}' | sed 's/zenodo\\.//'); \
-        EXT=\${FILE##*.}; BASE=\${FILE%.*}; \
-        ORIGINAL=\"./data/\$FILE\"; \
-        if [ \"\$EXT\" = \"qs\" ]; then \
-            TARGET=\"./data/\${BASE}_\${RECORD_ID}.qs\"; \
-        elif [ \"\$EXT\" = \"zip\" ]; then \
-            TARGET=\"./data/\${BASE}_\${RECORD_ID}.zip\"; \
-        else \
-            TARGET_CSV=\"./data/\${BASE}_\${RECORD_ID}.\${EXT}\"; \
-            TARGET=\"\${TARGET_CSV%.*}.qs\"; \
-        fi; \
-        URL=\"https://zenodo.org/record/\$RECORD_ID/files/\$FILE?download=1\"; \
-        if [ -f \"\$TARGET\" ]; then continue; fi; \
-        if [ -f \"\$ORIGINAL\" ]; then \
-            if [ \"\$EXT\" = \"qs\" ]; then cp \"\$ORIGINAL\" \"\$TARGET\"; \
-            elif [ \"\$EXT\" = \"zip\" ]; then cp \"\$ORIGINAL\" \"\$TARGET\"; \
-            else cp \"\$ORIGINAL\" \"\$TARGET_CSV\"; fi; \
-        else \
-            if [ \"\$EXT\" = \"qs\" ] || [ \"\$EXT\" = \"zip\" ]; then \
-                wget -nv -O \"\$TARGET\" \"\$URL\" || { echo \"\$FILE\" >> DOI_failed.csv; continue; } \
-            else \
-                wget -nv -O \"\$TARGET_CSV\" \"\$URL\" || { echo \"\$FILE\" >> DOI_failed.csv; continue; } \
-            fi; \
-        fi; \
-        if [ \"\$EXT\" = \"zip\" ]; then \
-            echo \"📦 Extracting zip file: \$TARGET\" && \
-            unzip -q -o \"\$TARGET\" -d \"./data/\" && \
-            echo \"✅ Zip file extracted successfully\"; \
-        elif [ \"\$EXT\" != \"qs\" ]; then \
-            Rscript -e \"qs::qsave(readr::read_csv('\$TARGET_CSV'), '\$TARGET')\" && rm -f \"\$TARGET_CSV\"; \
-        fi; \
-    done"
-
-RUN echo \"✅ Listing files in ./data after conversion:\" && ls -lh ./data
 
 RUN echo "✅ Listing files in ./data after conversion:" && ls -lh ./data
 
@@ -154,10 +89,6 @@ ARG TEST_SCRIPT_URL="https://raw.githubusercontent.com/firms-gta/tunaatlas_pie_m
 
 RUN R -e "source(url('$TEST_SCRIPT_URL'), local=TRUE, encoding='UTF-8')"
 
-RUN echo "✅ Listing files in ./data after conversion:" && ls -lh ./data
-
-
-# Run the data update script Downloading the data (cached if DOI.csv did not change).
 COPY ./* ./
 
 RUN Rscript global.R
