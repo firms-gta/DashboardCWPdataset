@@ -1,4 +1,4 @@
-name: Build and Push Docker Image with_preloaded_data_FS_GTA_minlmal
+name: Build and Push Docker Image with_preloaded_data_FS_GTA
 
 on:
   push:
@@ -18,7 +18,7 @@ on:
         default: "build" 
 
 env:
-  CACHE_IMAGE: ghcr.io/firms-gta/dashboardcwpdatasetpreloadeddatafsgta-cache
+  CACHE_IMAGE: ghcr.io/firms-gta/dashboardcwpdatasetpreloadeddatafsgtaminimal-cache
   DOCKER_BUILDKIT: 1
   RENV_PATHS_ROOT: /root/.cache/R/renv
 
@@ -53,7 +53,7 @@ jobs:
         if: ${{ contains(github.event.inputs.action, 'push') }}
         uses: docker/metadata-action@v4
         with:
-          images: ghcr.io/firms-gta/dashboardcwpdatasetpreloadeddatafsgta
+          images: ghcr.io/firms-gta/dashboardcwpdatasetpreloadeddatafsgtaminimal
           flavor: latest=true
           tags: |
             type=ref,event=branch
@@ -62,7 +62,7 @@ jobs:
           labels: |
             org.opencontainers.image.url=${{ github.repository }}
             org.opencontainers.image.source=${{ github.repository }}
-            org.opencontainers.image.title=dashboardcwpdatasetpreloadeddatafsgta
+            org.opencontainers.image.title=dashboardcwpdatasetpreloadeddatafsgtaminimal
             org.opencontainers.image.description=Interactive Shiny application for Tuna Atlas data visualization
             org.opencontainers.image.vendor=IRD
             org.opencontainers.image.author=Bastien Grasset <bastien.grasset@ird.fr>
@@ -93,7 +93,7 @@ jobs:
           if [[ "${{ github.event.inputs.action }}" == "build-no-cache-and-push" || "${{ github.event.inputs.action }}" == "build-no-cache" ]]; then
             echo "Building without cache..."
             docker buildx build \
-              -f Dockerfile.preloadeddata \
+              -f Dockerfile.preloadeddataminimal \
               --no-cache \
               --progress=plain \
               --build-arg MODE=prod \
@@ -102,13 +102,13 @@ jobs:
               --build-arg BRANCH=${{ github.ref_name }} \
               --build-arg BASE_IMAGE=rocker/r-ver:4.2.3 \
               --build-arg DOI_CSV_HASH=${{ env.doi_csv_hash }} \
-              --tag ghcr.io/firms-gta/dashboardcwpdatasetpreloadeddatafsgta:${BRANCH_NAME} \
+              --tag ghcr.io/firms-gta/dashboardcwpdatasetpreloadeddatafsgtaminimal:${BRANCH_NAME} \
               --output type=docker,dest=/tmp/docker-image.tar \
               .
           else
             echo "Building with cache..."
             docker buildx build \
-              -f Dockerfile.preloadeddata \
+              -f Dockerfile.preloadeddataminimal \
               --progress=plain \
               --cache-from type=registry,ref=$CACHE_IMAGE:${BRANCH_NAME} \
               --cache-to type=registry,ref=$CACHE_IMAGE:${BRANCH_NAME},mode=max \
@@ -118,7 +118,7 @@ jobs:
               --build-arg BASE_IMAGE=rocker/r-ver:4.2.3 \
               --build-arg RENV_LOCK_HASH=${{ env.renv_lock_hash }} \
               --build-arg DOI_CSV_HASH=${{ env.doi_csv_hash }} \
-              --tag ghcr.io/firms-gta/dashboardcwpdatasetpreloadeddatafsgta:${BRANCH_NAME} \
+              --tag ghcr.io/firms-gta/dashboardcwpdatasetpreloadeddatafsgtaminimal:${BRANCH_NAME} \
               --output type=docker,dest=/tmp/docker-image.tar \
               .
           fi
@@ -136,11 +136,11 @@ jobs:
 
           # Check if the branch is main
           if [ "$BRANCH_NAME" = "main" ]; then
-            docker tag ghcr.io/firms-gta/dashboardcwpdatasetpreloadeddatafsgta:${BRANCH_NAME} ghcr.io/firms-gta/dashboardcwpdatasetpreloadeddatafsgta:latest
-            docker push ghcr.io/firms-gta/dashboardcwpdatasetpreloadeddatafsgta:latest
+            docker tag ghcr.io/firms-gta/dashboardcwpdatasetpreloadeddatafsgtaminimal:${BRANCH_NAME} ghcr.io/firms-gta/dashboardcwpdatasetpreloadeddatafsgtaminimal:latest
+            docker push ghcr.io/firms-gta/dashboardcwpdatasetpreloadeddatafsgtaminimal:latest
           else
-            docker tag ghcr.io/firms-gta/dashboardcwpdatasetpreloadeddatafsgta:${BRANCH_NAME} ghcr.io/firms-gta/dashboardcwpdatasetpreloadeddatafsgta:${TAG_NAME}
-            docker push ghcr.io/firms-gta/dashboardcwpdatasetpreloadeddatafsgta:${BRANCH_NAME}
-            docker push ghcr.io/firms-gta/dashboardcwpdatasetpreloadeddatafsgta:${TAG_NAME}
+            docker tag ghcr.io/firms-gta/dashboardcwpdatasetpreloadeddatafsgtaminimal:${BRANCH_NAME} ghcr.io/firms-gta/dashboardcwpdatasetpreloadeddatafsgtaminimal:${TAG_NAME}
+            docker push ghcr.io/firms-gta/dashboardcwpdatasetpreloadeddatafsgtaminimal:${BRANCH_NAME}
+            docker push ghcr.io/firms-gta/dashboardcwpdatasetpreloadeddatafsgtaminimal:${TAG_NAME}
           fi
 

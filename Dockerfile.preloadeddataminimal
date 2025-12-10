@@ -1,0 +1,31 @@
+# syntax=docker/dockerfile:1.7
+#############################
+# 1) Stage "data from the paper IOTC"      #
+#############################
+
+FROM ghcr.io/bastienird/gta_nc_datapaper:latest AS datafrompaper
+
+#############################
+# 2) Stage final: the app
+#############################
+
+FROM ghcr.io/firms-gta/dashboardcwpdataset:latest AS final
+
+
+WORKDIR /root/DashboardCWPdataset
+
+
+# Creating data repo
+RUN mkdir -p data 
+
+COPY --from=datafrompaper /root/GTA_NC_DataPaper/inputs/data/GTA/NCD_MAPPED.qs ./data/NCD_MAPPED.qs
+COPY --from=datafrompaper /root/GTA_NC_DataPaper/inputs/data/FSJ/FS_MAPPED.qs   ./data/FS_MAPPED.qs
+
+RUN echo 'PRELOAD_DATA=TRUE' >> ~/.Renviron
+RUN Rscript global.R
+RUN echo "Listing files in ./data after adding mapped QS:" && ls -lh ./data
+
+# -------------------------
+# Loading with global.R for creating preloaded data and first outputs
+# -------------------------
+RUN Rscript global.R
