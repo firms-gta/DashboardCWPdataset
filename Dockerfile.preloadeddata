@@ -136,5 +136,5 @@ EXPOSE 3838
 EXPOSE 8787
 
 # ENTRYPOINT
-# RUN chmod +x entrypoint.sh
-# ENTRYPOINT ["./entrypoint.sh"]
+RUN chmod +x entrypoint.sh
+ENTRYPOINT ["./entrypoint.sh"]
