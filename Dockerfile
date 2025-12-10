@@ -91,7 +91,8 @@ ARG TEST_SCRIPT_URL="https://raw.githubusercontent.com/firms-gta/tunaatlas_pie_m
 
 RUN R -e "source(url('$TEST_SCRIPT_URL'), local=TRUE, encoding='UTF-8')"
 
-COPY ./* ./
+# COPY ./* ./ copie juste les files a la racine
+COPY . ./ 
 
 RUN Rscript global.R
 
