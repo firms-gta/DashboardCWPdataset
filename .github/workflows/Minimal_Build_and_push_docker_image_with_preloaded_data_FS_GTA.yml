@@ -1,4 +1,4 @@
-name: Build and Push Docker Image with_preloaded_data_FS_GTA
+name: Build and Push Docker Image with_preloaded_data_FS_GTA_minimal
 
 on:
   push:
