@@ -29,7 +29,7 @@ RUN install2.r --error --skipinstalled --ncpus -1 httpuv
 WORKDIR /root/DashboardCWPdataset
 
 RUN Rscript -e "install.packages('remotes', repos='https://cloud.r-project.org'); \
-                remotes::install_version('jsonlite', version = '1.9.1', upgrade = 'never', repos = 'https://cran.r-project.org')"
+                remotes::install_version('jsonlite', version = '2.0.0', upgrade = 'never', repos = 'https://cran.r-project.org')"
 
 RUN mkdir -p data 
 
@@ -93,14 +93,13 @@ RUN R -e "source(url('$TEST_SCRIPT_URL'), local=TRUE, encoding='UTF-8')"
 
 COPY ./* ./
 
-RUN Rscript global.R
+# RUN Rscript global.R
 
 ARG BRANCH
 ENV BUILD_BRANCH=${BRANCH}
 
 RUN echo "✅ MODE is: $MODE" && echo "✅ BRANCH is: $BRANCH" && echo "✅ BUILD_BRANCH is: $BUILD_BRANCH"
 RUN echo "✅ Listing files in ./data after conversion:" && ls -lh ./data
-RUN R -e "if (Sys.getenv('BUILD_BRANCH') == 'dev') { library(dplyr); library(here); full <- qs::qread(here::here('data/default_dataset.qs')); full <- full %>% dplyr::filter(fishing_fleet == 'EUFRA - France (EU)'); qs::qsave(full, here::here('data/default_dataset.qs')); file.remove(here::here('data/data.qs')); source(here::here('create_or_load_default_dataset.R')) }"
 RUN echo "✅ MODE is: $MODE" && echo "✅ BRANCH is: $BRANCH" && echo "✅ BUILD_BRANCH is: $BUILD_BRANCH"
 
 RUN mkdir -p /etc/DashboardCWPdataset/
