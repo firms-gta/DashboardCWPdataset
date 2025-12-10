@@ -109,8 +109,8 @@ RUN mkdir -p data
 # -------------------------
 # Copying qs from the datafrompaper docker image as no DOI for now on the FS dataset
 # -------------------------
-COPY --from=datafrompaper /root/gta_nc_datapaper/inputs/data/GTA/NCD_MAPPED.qs ./data/NCD_MAPPED.qs
-COPY --from=datafrompaper /root/gta_nc_datapaper/inputs/data/FSJ/FS_MAPPED.qs   ./data/FS_MAPPED.qs
+COPY --from=datafrompaper /root/GTA_NC_DataPaper/inputs/data/GTA/NCD_MAPPED.qs ./data/NCD_MAPPED.qs
+COPY --from=datafrompaper /root/GTA_NC_DataPaper/inputs/data/FSJ/FS_MAPPED.qs   ./data/FS_MAPPED.qs
 
 RUN echo "✅ Listing files in ./data after adding mapped QS:" && ls -lh ./data
 
