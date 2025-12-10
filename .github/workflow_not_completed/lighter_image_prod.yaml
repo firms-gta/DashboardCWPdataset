@@ -10,7 +10,7 @@ on:
         type: boolean
 
 env:
-  IMAGE: ghcr.io/firms-gta/dashboardcwpdataset
+  IMAGE: ghcr.io/bastienird/dashboardcwpdataset
 
 jobs:
   build-slim:

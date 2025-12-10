@@ -84,7 +84,7 @@ RUN R -e "renv::restore()"
 RUN R -e "renv::repair()" 
 
 
-FROM ghcr.io/firms-gta/dashboardcwpdataset-multistage:doi-data-latest AS doi-data
+FROM ghcr.io/bastienird/dashboardcwpdataset-multistage:doi-data-latest AS doi-data
 
 FROM app AS final
 WORKDIR /root/dashboardcwpdataset

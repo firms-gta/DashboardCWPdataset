@@ -18,7 +18,7 @@ on:
         default: "build" 
 
 env:
-  CACHE_IMAGE: ghcr.io/firms-gta/dashboardcwpdataset-cache
+  CACHE_IMAGE: ghcr.io/bastienird/dashboardcwpdataset-cache
   DOCKER_BUILDKIT: 1
   RENV_PATHS_ROOT: /root/.cache/R/renv
 
@@ -53,7 +53,7 @@ jobs:
         if: ${{ contains(github.event.inputs.action, 'push') }}
         uses: docker/metadata-action@v4
         with:
-          images: ghcr.io/firms-gta/dashboardcwpdataset
+          images: ghcr.io/bastienird/dashboardcwpdataset
           flavor: latest=true
           tags: |
             type=ref,event=branch
@@ -101,7 +101,7 @@ jobs:
               --build-arg BRANCH=${{ github.ref_name }} \
               --build-arg BASE_IMAGE=rocker/r-ver:4.2.3 \
               --build-arg DOI_CSV_HASH=${{ env.doi_csv_hash }} \
-              --tag ghcr.io/firms-gta/dashboardcwpdataset:${BRANCH_NAME} \
+              --tag ghcr.io/bastienird/dashboardcwpdataset:${BRANCH_NAME} \
               --output type=docker,dest=/tmp/docker-image.tar \
               .
           else
@@ -116,7 +116,7 @@ jobs:
               --build-arg BASE_IMAGE=rocker/r-ver:4.2.3 \
               --build-arg RENV_LOCK_HASH=${{ env.renv_lock_hash }} \
               --build-arg DOI_CSV_HASH=${{ env.doi_csv_hash }} \
-              --tag ghcr.io/firms-gta/dashboardcwpdataset:${BRANCH_NAME} \
+              --tag ghcr.io/bastienird/dashboardcwpdataset:${BRANCH_NAME} \
               --output type=docker,dest=/tmp/docker-image.tar \
               .
           fi
@@ -134,11 +134,11 @@ jobs:
 
           # Check if the branch is main
           if [ "$BRANCH_NAME" = "main" ]; then
-            docker tag ghcr.io/firms-gta/dashboardcwpdataset:${BRANCH_NAME} ghcr.io/firms-gta/dashboardcwpdataset:latest
-            docker push ghcr.io/firms-gta/dashboardcwpdataset:latest
+            docker tag ghcr.io/bastienird/dashboardcwpdataset:${BRANCH_NAME} ghcr.io/bastienird/dashboardcwpdataset:latest
+            docker push ghcr.io/bastienird/dashboardcwpdataset:latest
           else
-            docker tag ghcr.io/firms-gta/dashboardcwpdataset:${BRANCH_NAME} ghcr.io/firms-gta/dashboardcwpdataset:${TAG_NAME}
-            docker push ghcr.io/firms-gta/dashboardcwpdataset:${BRANCH_NAME}
-            docker push ghcr.io/firms-gta/dashboardcwpdataset:${TAG_NAME}
+            docker tag ghcr.io/bastienird/dashboardcwpdataset:${BRANCH_NAME} ghcr.io/bastienird/dashboardcwpdataset:${TAG_NAME}
+            docker push ghcr.io/bastienird/dashboardcwpdataset:${BRANCH_NAME}
+            docker push ghcr.io/bastienird/dashboardcwpdataset:${TAG_NAME}
           fi
 
