@@ -4,24 +4,25 @@ ARG BASE_IMAGE
 FROM ${BASE_IMAGE:-rocker/r-ver:4.2.3}
 
 # Install system libraries
-apt-get update && apt-get install -y \
-  libxml2-dev \
-  libx11-dev \
-  libcurl4-openssl-dev \
-  libssl-dev \
-  make \
-  zlib1g-dev \
-  libsecret-1-dev \
-  pandoc \
-  cmake \
-  libgdal-dev \
-  gdal-bin \
-  libgeos-dev \
-  libproj-dev \
-  libsqlite3-dev \
-  libicu-dev \
-  libudunits2-dev \
-  && apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y \
+    libxml2-dev \
+    libx11-dev \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    make \
+    zlib1g-dev \
+    libsecret-1-dev \
+    pandoc \
+    cmake \
+    libgdal-dev \
+    gdal-bin \
+    libgeos-dev \
+    libproj-dev \
+    libsqlite3-dev \
+    libicu-dev \
+    libudunits2-dev \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/*
 
 RUN install2.r --error --skipinstalled --ncpus -1 httpuv
 
