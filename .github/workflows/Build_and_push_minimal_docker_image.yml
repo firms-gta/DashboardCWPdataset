@@ -17,6 +17,12 @@ on:
         required: true
         default: "build" 
 
+permissions:
+  contents: write
+  packages: write
+  pages: write
+  id-token: write
+
 env:
   CACHE_IMAGE: ghcr.io/bastienird/dashboardcwpdataset-cache
   DOCKER_BUILDKIT: 1
