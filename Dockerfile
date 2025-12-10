@@ -28,7 +28,8 @@ RUN install2.r --error --skipinstalled --ncpus -1 httpuv
 
 WORKDIR /root/DashboardCWPdataset
 
-RUN Rscript -e "install.packages('remotes', repos='https://cloud.r-project.org')"
+RUN Rscript -e "install.packages('remotes', repos='https://cloud.r-project.org'); \
+                remotes::install_version('jsonlite', version = '1.9.1', upgrade = 'never', repos = 'https://cran.r-project.org')"
 
 RUN mkdir -p data 
 
