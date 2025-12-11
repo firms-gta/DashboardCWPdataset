@@ -11,7 +11,7 @@ It is built on top of the [`bastienird/CWP.dataset`](https://github.com/bastieni
 
 👉 For more advanced features (detailed analyses, interactive visualizations, and full mapping capabilities), please refer to the following application:  
 
-[`firms-gta/tunaatlas_pie_map_shiny`](https://github.com/firms-gta/tunaatlas_pie_map_shiny)
+[`firms-gta/DashboardCWPdataset`](https://github.com/firms-gta/DashboardCWPdataset)
 
 ---
 
