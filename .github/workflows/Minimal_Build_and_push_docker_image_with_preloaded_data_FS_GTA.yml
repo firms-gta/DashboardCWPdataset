@@ -124,8 +124,8 @@ jobs:
             docker buildx build \
               -f Dockerfile.preloadeddataminimal \
               --progress=plain \
-              --cache-from type=registry,ref=$CACHE_IMAGE:${BRANCH_NAME} \
-              --cache-to type=registry,ref=$CACHE_IMAGE:${BRANCH_NAME},mode=max \
+              --cache-from "type=registry,ref=${CACHE}:${BRANCH_NAME}" \
+              --cache-to "type=registry,ref=${CACHE}:${BRANCH_NAME},mode=max" \
               --build-arg MODE=prod \
               --build-arg BRANCH=${{ github.ref_name }} \
               --build-arg RENV_PATHS_ROOT=${{ env.RENV_PATHS_ROOT }} \
