@@ -21,7 +21,7 @@ RUN mkdir -p data
 COPY --from=datafrompaper /root/GTA_NC_DataPaper/inputs/data/GTA/NCD_MAPPED.qs ./data/NCD_MAPPED.qs
 COPY --from=datafrompaper /root/GTA_NC_DataPaper/inputs/data/FSJ/FS_MAPPED.qs   ./data/FS_MAPPED.qs
 
-RUN echo 'SHINY_PRELOAD_DATA=TRUE' >> ~/.Renviron
+RUN echo 'SHINY_PRELOAD_DATA=TRUE' >> .Renviron
 RUN Rscript global.R
 RUN echo "Listing files in ./data after adding mapped QS:" && ls -lh ./data
 ENV SHINY_PRELOAD_DATA=TRUE
