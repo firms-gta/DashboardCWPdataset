@@ -24,7 +24,9 @@ permissions:
   id-token: write
 
 env:
-  CACHE_IMAGE: ghcr.io/bastienird/dashboardcwpdataset-cache
+  REGISTRY: ghcr.io
+  FINAL_IMAGE: firms-gta/dashboardcwpdataset
+  CACHE_REF: ghcr.io/firms-gta/dashboardcwpdataset-buildcache
   DOCKER_BUILDKIT: 1
   RENV_PATHS_ROOT: /root/.cache/R/renv
 
@@ -73,12 +75,12 @@ jobs:
             org.opencontainers.image.vendor=IRD
             org.opencontainers.image.author=Bastien Grasset <bastien.grasset@ird.fr>
 
-      - name: Login to image repository
-        uses: docker/login-action@v2
+      - name: Login to GHCR
+        uses: docker/login-action@v3
         with:
-          registry: ghcr.io
-          username: bastienird
-          password: ${{ secrets.GHCR_PAT || secrets.GHCR_TOKEN || github.token }}
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -94,35 +96,40 @@ jobs:
       - name: Build Docker image
         if: ${{ !contains(github.event.head_commit.message, 'No building docker image') }}
         run: |
-          BRANCH_NAME=$(echo ${{ github.ref_name }} | tr '/' '_' | tr ':' '_')
-    
+          BRANCH_NAME=$(echo "${{ github.ref_name }}" | tr '/' '_' | tr ':' '_')
+          IMAGE="${{ env.REGISTRY }}/${{ env.FINAL_IMAGE }}"
+          CACHE="${{ env.CACHE_REF }}"
+
+          echo "Building image: ${IMAGE}:${BRANCH_NAME}"
+          echo "Using cache ref: ${CACHE}:${BRANCH_NAME}"
+
           if [[ "${{ github.event.inputs.action }}" == "build-no-cache-and-push" || "${{ github.event.inputs.action }}" == "build-no-cache" ]]; then
             echo "Building without cache..."
             docker buildx build \
               --no-cache \
               --progress=plain \
               --build-arg MODE=prod \
-              --build-arg RENV_PATHS_ROOT=${{ env.RENV_PATHS_ROOT }} \
-              --build-arg RENV_LOCK_HASH=${{ env.renv_lock_hash }} \
-              --build-arg BRANCH=${{ github.ref_name }} \
+              --build-arg RENV_PATHS_ROOT="${{ env.RENV_PATHS_ROOT }}" \
+              --build-arg RENV_LOCK_HASH="${{ env.renv_lock_hash }}" \
+              --build-arg BRANCH="${{ github.ref_name }}" \
               --build-arg BASE_IMAGE=rocker/r-ver:4.2.3 \
-              --build-arg DOI_CSV_HASH=${{ env.doi_csv_hash }} \
-              --tag ghcr.io/bastienird/dashboardcwpdataset:${BRANCH_NAME} \
+              --build-arg DOI_CSV_HASH="${{ env.doi_csv_hash }}" \
+              --tag "${IMAGE}:${BRANCH_NAME}" \
               --output type=docker,dest=/tmp/docker-image.tar \
               .
           else
             echo "Building with cache..."
             docker buildx build \
               --progress=plain \
-              --cache-from type=registry,ref=$CACHE_IMAGE:${BRANCH_NAME} \
-              --cache-to type=registry,ref=$CACHE_IMAGE:${BRANCH_NAME},mode=max \
+              --cache-from "type=registry,ref=${CACHE}:${BRANCH_NAME}" \
+              --cache-to "type=registry,ref=${CACHE}:${BRANCH_NAME},mode=max" \
               --build-arg MODE=prod \
-              --build-arg BRANCH=${{ github.ref_name }} \
-              --build-arg RENV_PATHS_ROOT=${{ env.RENV_PATHS_ROOT }} \
+              --build-arg BRANCH="${{ github.ref_name }}" \
+              --build-arg RENV_PATHS_ROOT="${{ env.RENV_PATHS_ROOT }}" \
               --build-arg BASE_IMAGE=rocker/r-ver:4.2.3 \
-              --build-arg RENV_LOCK_HASH=${{ env.renv_lock_hash }} \
-              --build-arg DOI_CSV_HASH=${{ env.doi_csv_hash }} \
-              --tag ghcr.io/bastienird/dashboardcwpdataset:${BRANCH_NAME} \
+              --build-arg RENV_LOCK_HASH="${{ env.renv_lock_hash }}" \
+              --build-arg DOI_CSV_HASH="${{ env.doi_csv_hash }}" \
+              --tag "${IMAGE}:${BRANCH_NAME}" \
               --output type=docker,dest=/tmp/docker-image.tar \
               .
           fi
@@ -135,16 +142,21 @@ jobs:
       - name: Conditional push Docker image
         if: ${{ github.event_name == 'workflow_dispatch' && contains(github.event.inputs.action, 'push') || github.event_name == 'push' && github.ref_type == 'tag' }}
         run: |
-          TAG_NAME=$(basename ${GITHUB_REF})
-          BRANCH_NAME=$(echo ${{ github.ref_name }} | sed 's/[^a-zA-Z0-9_.-]/_/g') # Sanitize branch name
+          IMAGE="${{ env.REGISTRY }}/${{ env.FINAL_IMAGE }}"
+          TAG_NAME=$(basename "${GITHUB_REF}")
+          BRANCH_NAME=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9_.-]/_/g')
 
-          # Check if the branch is main
-          if [ "$BRANCH_NAME" = "main" ]; then
-            docker tag ghcr.io/bastienird/dashboardcwpdataset:${BRANCH_NAME} ghcr.io/bastienird/dashboardcwpdataset:latest
-            docker push ghcr.io/bastienird/dashboardcwpdataset:latest
+          echo "Pushing image ${IMAGE}:${BRANCH_NAME}"
+
+          if [ "${BRANCH_NAME}" = "main" ]; then
+            echo "Branch is main → tagging as latest"
+            docker tag "${IMAGE}:${BRANCH_NAME}" "${IMAGE}:latest"
+            docker push "${IMAGE}:latest"
           else
-            docker tag ghcr.io/bastienird/dashboardcwpdataset:${BRANCH_NAME} ghcr.io/bastienird/dashboardcwpdataset:${TAG_NAME}
-            docker push ghcr.io/bastienird/dashboardcwpdataset:${BRANCH_NAME}
-            docker push ghcr.io/bastienird/dashboardcwpdataset:${TAG_NAME}
+            echo "Branch is not main → tagging as ${TAG_NAME}"
+            docker tag "${IMAGE}:${BRANCH_NAME}" "${IMAGE}:${TAG_NAME}"
+            docker push "${IMAGE}:${BRANCH_NAME}"
+            docker push "${IMAGE}:${TAG_NAME}"
           fi
+
 
