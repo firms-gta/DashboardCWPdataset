@@ -9,7 +9,7 @@ FROM ghcr.io/bastienird/gta_nc_datapaper:latest AS datafrompaper
 # 2) Stage final: the app
 #############################
 
-FROM ghcr.io/bastienird/dashboardcwpdataset:latest AS final
+FROM ghcr.io/bastienird/dashboardcwpdataset2:latest AS final
 
 
 WORKDIR /root/DashboardCWPdataset
