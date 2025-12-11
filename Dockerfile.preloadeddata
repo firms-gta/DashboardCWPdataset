@@ -124,7 +124,7 @@ RUN echo "✅ MODE is: $MODE" && echo "✅ BRANCH is: $BRANCH" && echo "✅ BUIL
 # -------------------------
 # Loading with global.R
 # -------------------------
-RUN echo 'PRELOAD_DATA=TRUE' >> ~/.Renviron
+RUN echo 'SHINY_PRELOAD_DATA=TRUE' >> ~/.Renviron
 RUN Rscript global.R
 
 RUN echo '✅ Final data content in ./data:' && ls -lh ./data
