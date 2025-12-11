@@ -2,11 +2,11 @@
 set -e
 
 # répertoire app par défaut
-APP_DIR="/root/tunaatlas_pie_map_shiny"
+APP_DIR="/root/DashboardCWPdataset"
 
 # si on est en mode dev, on veut travailler dans /home/rstudio/pour eviter les problemes de cache renv
 if [ "$MODE" = "dev" ]; then
-  APP_DIR="/home/rstudio/tunaatlas_pie_map_shiny"
+  APP_DIR="/home/rstudio/DashboardCWPdataset"
 fi
 
 # Variables renv (communes aux 2 modes), on force un cache dans le projet
@@ -26,7 +26,7 @@ if [ "$MODE" = "dev" ]; then
   if [ ! -d "$APP_DIR" ]; then
     echo "📁 Copie des fichiers vers $APP_DIR"
     mkdir -p "$APP_DIR"
-    cp -a /root/tunaatlas_pie_map_shiny/. "$APP_DIR"/
+    cp -a /root/DashboardCWPdataset/. "$APP_DIR"/
   fi
 
   # R démarre dans le bon dossier
