@@ -24,7 +24,7 @@ permissions:
 env:
   REGISTRY: ghcr.io
   FINAL_IMAGE: firms-gta/dashboardcwpdataset-test
-  CACHE_REF: ghcr.io/bastienird/dashboardcwpdataset-multistage-test
+  CACHE_REF: ghcr.io/firms-gta/dashboardcwpdataset-test
   DOCKER_BUILDKIT: 1
   RENV_PATHS_ROOT: /root/.cache/R/renv
 
