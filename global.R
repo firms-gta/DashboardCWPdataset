@@ -16,7 +16,7 @@ options(shiny.maxRequestSize = 200*1024^2)  # 200 MB upload limit
   library(shinyjs)
 # })
 
-PRELOAD_DATA <- Sys.getenv("SHINY_PRELOAD_DATA", "TRUE") == "FALSE"
+PRELOAD_DATA <- Sys.getenv("SHINY_PRELOAD_DATA", "FALSE") == "TRUE"
 PRELOAD_DATA_PATH <- Sys.getenv("SHINY_PRELOAD_DATA_PATH", "data/")
 
 source(here::here("R/load_default_data.R"))
