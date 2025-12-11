@@ -24,7 +24,9 @@ permissions:
   id-token: write
 
 env:
-  CACHE_IMAGE: ghcr.io/bastienird/dashboardcwpdatasetpreloadeddatafsgtaminimal-cache
+  REGISTRY: ghcr.io
+  FINAL_IMAGE: firms-gta/dashboardcwpdatasetpreloadeddata
+  CACHE_REF: ghcr.io/firms-gta/dashboardcwpdatasetpreloadeddata-buildcache
   DOCKER_BUILDKIT: 1
   RENV_PATHS_ROOT: /root/.cache/R/renv
 
@@ -54,12 +56,13 @@ jobs:
           else
             echo "doi_csv_hash=default" >> $GITHUB_ENV
           fi
+          
       - name: Docker meta
         id: meta
         if: ${{ contains(github.event.inputs.action, 'push') }}
         uses: docker/metadata-action@v4
         with:
-          images: ghcr.io/bastienird/dashboardcwpdatasetpreloadeddatafsgtaminimal
+          images: "${{ env.REGISTRY }}/${{ env.FINAL_IMAGE }}"
           flavor: latest=true
           tags: |
             type=ref,event=branch
@@ -69,16 +72,16 @@ jobs:
             org.opencontainers.image.url=${{ github.repository }}
             org.opencontainers.image.source=${{ github.repository }}
             org.opencontainers.image.title=dashboardcwpdatasetpreloadeddatafsgtaminimal
-            org.opencontainers.image.description=Interactive Shiny application for Tuna Atlas data visualization
+            org.opencontainers.image.description=Interactive Shiny application for Global Tuna Atlas data and FishStat data visualization
             org.opencontainers.image.vendor=IRD
             org.opencontainers.image.author=Bastien Grasset <bastien.grasset@ird.fr>
 
       - name: Login to image repository
         uses: docker/login-action@v2
         with:
-          registry: ghcr.io
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_PAT || secrets.GHCR_TOKEN || github.token }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -94,7 +97,12 @@ jobs:
       - name: Build Docker image
         if: ${{ !contains(github.event.head_commit.message, 'No building docker image') }}
         run: |
-          BRANCH_NAME=$(echo ${{ github.ref_name }} | tr '/' '_' | tr ':' '_')
+          BRANCH_NAME=$(echo "${{ github.ref_name }}" | tr '/' '_' | tr ':' '_')
+          IMAGE="${{ env.REGISTRY }}/${{ env.FINAL_IMAGE }}"
+          CACHE="${{ env.CACHE_REF }}"
+
+          echo "Building image: ${IMAGE}:${BRANCH_NAME}"
+          echo "Using cache ref: ${CACHE}:${BRANCH_NAME}"
     
           if [[ "${{ github.event.inputs.action }}" == "build-no-cache-and-push" || "${{ github.event.inputs.action }}" == "build-no-cache" ]]; then
             echo "Building without cache..."
@@ -108,7 +116,7 @@ jobs:
               --build-arg BRANCH=${{ github.ref_name }} \
               --build-arg BASE_IMAGE=rocker/r-ver:4.2.3 \
               --build-arg DOI_CSV_HASH=${{ env.doi_csv_hash }} \
-              --tag ghcr.io/bastienird/dashboardcwpdatasetpreloadeddatafsgtaminimal:${BRANCH_NAME} \
+              --tag "${IMAGE}:${BRANCH_NAME}" \
               --output type=docker,dest=/tmp/docker-image.tar \
               .
           else
@@ -124,7 +132,7 @@ jobs:
               --build-arg BASE_IMAGE=rocker/r-ver:4.2.3 \
               --build-arg RENV_LOCK_HASH=${{ env.renv_lock_hash }} \
               --build-arg DOI_CSV_HASH=${{ env.doi_csv_hash }} \
-              --tag ghcr.io/bastienird/dashboardcwpdatasetpreloadeddatafsgtaminimal:${BRANCH_NAME} \
+              --tag "${IMAGE}:${BRANCH_NAME}" \
               --output type=docker,dest=/tmp/docker-image.tar \
               .
           fi
@@ -137,16 +145,20 @@ jobs:
       - name: Conditional push Docker image
         if: ${{ github.event_name == 'workflow_dispatch' && contains(github.event.inputs.action, 'push') || github.event_name == 'push' && github.ref_type == 'tag' }}
         run: |
-          TAG_NAME=$(basename ${GITHUB_REF})
-          BRANCH_NAME=$(echo ${{ github.ref_name }} | sed 's/[^a-zA-Z0-9_.-]/_/g') # Sanitize branch name
+          IMAGE="${{ env.REGISTRY }}/${{ env.FINAL_IMAGE }}"
+          TAG_NAME=$(basename "${GITHUB_REF}")
+          BRANCH_NAME=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9_.-]/_/g')
 
-          # Check if the branch is main
-          if [ "$BRANCH_NAME" = "main" ]; then
-            docker tag ghcr.io/bastienird/dashboardcwpdatasetpreloadeddatafsgtaminimal:${BRANCH_NAME} ghcr.io/bastienird/dashboardcwpdatasetpreloadeddatafsgtaminimal:latest
-            docker push ghcr.io/bastienird/dashboardcwpdatasetpreloadeddatafsgtaminimal:latest
+          echo "Pushing image ${IMAGE}:${BRANCH_NAME}"
+
+          if [ "${BRANCH_NAME}" = "main" ]; then
+            echo "Branch is main → tagging as latest"
+            docker tag "${IMAGE}:${BRANCH_NAME}" "${IMAGE}:latest"
+            docker push "${IMAGE}:latest"
           else
-            docker tag ghcr.io/bastienird/dashboardcwpdatasetpreloadeddatafsgtaminimal:${BRANCH_NAME} ghcr.io/bastienird/dashboardcwpdatasetpreloadeddatafsgtaminimal:${TAG_NAME}
-            docker push ghcr.io/bastienird/dashboardcwpdatasetpreloadeddatafsgtaminimal:${BRANCH_NAME}
-            docker push ghcr.io/bastienird/dashboardcwpdatasetpreloadeddatafsgtaminimal:${TAG_NAME}
+            echo "Branch is not main → tagging as ${TAG_NAME}"
+            docker tag "${IMAGE}:${BRANCH_NAME}" "${IMAGE}:${TAG_NAME}"
+            docker push "${IMAGE}:${BRANCH_NAME}"
+            docker push "${IMAGE}:${TAG_NAME}"
           fi
 
