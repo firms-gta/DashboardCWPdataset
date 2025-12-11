@@ -18,10 +18,8 @@ on:
         default: "build" 
 
 permissions:
-  contents: write
+  contents: read
   packages: write
-  pages: write
-  id-token: write
 
 env:
   REGISTRY: ghcr.io
@@ -56,12 +54,13 @@ jobs:
           else
             echo "doi_csv_hash=default" >> $GITHUB_ENV
           fi
+          
       - name: Docker meta
         id: meta
         if: ${{ contains(github.event.inputs.action, 'push') }}
         uses: docker/metadata-action@v4
         with:
-          images: ghcr.io/bastienird/dashboardcwpdataset
+          images: ${{ env.REGISTRY }}/${{ env.FINAL_IMAGE }
           flavor: latest=true
           tags: |
             type=ref,event=branch
