@@ -6,8 +6,8 @@ ui <- dashboardPage(
   dashboardHeader(title = "Analysis Dashboard"),
   dashboardSidebar(
     sidebarMenu(
-      menuItem("Overview", tabName = "run", icon = icon("play")),
       menuItem("Comparison", tabName = "comparison", icon = icon("exchange-alt")),
+      menuItem("Overview", tabName = "run", icon = icon("play")),
       if (!PRELOAD_DATA) {
         menuItem("Coverage", tabName = "coverage", icon = icon("sliders"))
       },
@@ -64,8 +64,9 @@ ui <- dashboardPage(
     
     hr(),
     h4("Filters (species / fleet)"),
-    selectizeInput("species", "Species", choices = NULL, multiple = TRUE, options = list(placeholder = "Select species...")),
-    selectizeInput("fleet", "Fishing fleet", choices = NULL, multiple = TRUE, options = list(placeholder = "Select fleets...")),
+    uiOutput("time_start_filter_ui"),
+    selectizeInput("species_name", "Species", choices = NULL, multiple = TRUE, options = list(placeholder = "Select species...")),
+    selectizeInput("fishing_fleet_label", "Fishing fleet", choices = NULL, multiple = TRUE, options = list(placeholder = "Select fleets...")),
     # selectizeInput("COUNTRY", "COUNTRY", choices = NULL, multiple = TRUE, options = list(placeholder = "Select COUNTRY")),
     # selectizeInput("species_aggregate", "species_aggregate", choices = NULL, multiple = TRUE, options = list(placeholder = "Select species_aggregate")),
     selectizeInput("Ocean", "Ocean", choices = NULL, multiple = TRUE, options = list(placeholder = "Select Ocean")),
@@ -230,6 +231,27 @@ server <- function(input, output, session) {
     )
   })
   
+  output$time_start_filter_ui <- renderUI({
+    df <- get_active_dataset1()
+    req(df)
+    req("time_start" %in% names(df))
+    
+    # on convertit en Date (si déjà Date ça ne casse pas)
+    x <- df$time_start
+    x <- as.Date(x)
+    x <- x[!is.na(x)]
+    if (length(x) == 0) return(NULL)
+    
+    sliderInput(
+      "time_start_range",
+      "Time start (range)",
+      min = min(x), max = max(x),
+      value = c(min(x), max(x)),
+      timeFormat = "%Y-%m-%d"
+    )
+  })
+  
+  
   # --- Client info / session diag ---
   output$client_info <- renderText({
     cd <- session$clientData
@@ -356,8 +378,8 @@ server <- function(input, output, session) {
     mem <- format(object.size(df), units = "auto")
     output$vb_mem <- renderValueBox({ valueBox(mem, "Approx. size Dataset 1", icon = icon("database"), color = "purple") })
     
-    if ("species_name" %in% names(df)) updateSelectizeInput(session, "species", choices = sort(unique(df$species_name)), server = TRUE)
-    if ("fishing_fleet" %in% names(df)) updateSelectizeInput(session, "fleet", choices = sort(unique(df$fishing_fleet)), server = TRUE)
+    if ("species_name" %in% names(df)) updateSelectizeInput(session, "species_name", choices = sort(unique(df$species_name)), server = TRUE)
+    if ("fishing_fleet_label" %in% names(df)) updateSelectizeInput(session, "fishing_fleet_label", choices = sort(unique(df$fishing_fleet_label)), server = TRUE)
     if(PRELOAD_DATA){
       # if ("COUNTRY" %in% names(df)) updateSelectizeInput(session, "COUNTRY", choices = sort(unique(df$COUNTRY)), server = TRUE)
       if ("Ocean" %in% names(df)) updateSelectizeInput(session, "Ocean", choices = sort(unique(df$Ocean)), server = TRUE)
@@ -379,20 +401,20 @@ server <- function(input, output, session) {
   })
   
   # --- Button click tracer ---
-  observeEvent(input$run_btn, {
-    mode <- input$analysis_mode
-    # append_log_local("Button clicked. Mode:", mode,
-    #                  paste0("time_cols=", paste(input$time_cols, collapse=",")),
-    #                  paste0("geo_dim=", input$geo_dim),
-    #                  paste0("geo_group=", input$geo_group),
-    #                  paste0("fact=", input$fact),
-    #                  paste0("coverage=", input$coverage),
-    #                  paste0("print_map=", input$print_map),
-    #                  paste0("plotting_type=", input$plotting_type),
-    #                  paste0("species_n=", length(input$species)),
-    #                  paste0("fleet_n=", length(input$fleet)),
-    #                  paste0("debug_small=", input$debug_small))
-  }, ignoreInit = TRUE)
+  # observeEvent(input$run_btn, {
+  #   mode <- input$analysis_mode
+  #   # append_log_local("Button clicked. Mode:", mode,
+  #   #                  paste0("time_cols=", paste(input$time_cols, collapse=",")),
+  #   #                  paste0("geo_dim=", input$geo_dim),
+  #   #                  paste0("geo_group=", input$geo_group),
+  #   #                  paste0("fact=", input$fact),
+  #   #                  paste0("coverage=", input$coverage),
+  #   #                  paste0("print_map=", input$print_map),
+  #   #                  paste0("plotting_type=", input$plotting_type),
+  #   #                  paste0("species_n=", length(input$species)),
+  #   #                  paste0("fleet_n=", length(input$fleet)),
+  #   #                  paste0("debug_small=", input$debug_small))
+  # }, ignoreInit = TRUE)
   
   # --- Run analysis avec mode unique ou comparaison ---
   observeEvent(input$run_btn, {
@@ -409,7 +431,7 @@ server <- function(input, output, session) {
     removemap <- if (!is.null(input$removemap)) isTRUE(input$removemap) else FALSE
     debug_small <- if (!is.null(input$debug_small)) isTRUE(input$debug_small) else FALSE
     continent_input <- if (!is.null(input$continent)) input$continent else ""
-    parameter_colnames_to_keep <- if (PRELOAD_DATA) c("fishing_fleet", "Ocean", "species_name") else "all"
+    parameter_colnames_to_keep <- if (PRELOAD_DATA) c("fishing_fleet_label", "Ocean", "species_name") else "all"
     
     df <- get_active_dataset1()
     if (is.null(df)) {
@@ -440,8 +462,8 @@ server <- function(input, output, session) {
     }
     
     filt <- list(
-      species_name = if (length(input$species) > 0) input$species else NULL,
-      fishing_fleet = if (length(input$fleet) > 0) input$fleet else NULL,
+      species_name = if (length(input$species_name) > 0) input$species_name else NULL,
+      fishing_fleet_label = if (length(input$fishing_fleet_label) > 0) input$fishing_fleet_label else NULL,
       # COUNTRY = if (length(input$COUNTRY) > 0) input$COUNTRY else NULL,
       # species_aggregate = if (length(input$species_aggregate) > 0) input$species_aggregate else NULL,
       Ocean = if (length(input$Ocean) > 0) input$Ocean else NULL
@@ -450,7 +472,22 @@ server <- function(input, output, session) {
     
     t0 <- Sys.time()
     
-    withProgress(message = if (mode == "unique") "Running unique analysis..." else "Running comparison...", value = 0.1, {
+    # --- filtre temps sur df et parameter_final ---
+    if (!is.null(input$time_start_range) && "time_start" %in% names(df)) {
+      rng <- as.Date(input$time_start_range)
+      df$time_start <- as.Date(df$time_start)
+      df <- df[df$time_start >= rng[1] & df$time_start <= rng[2], , drop = FALSE]
+    }
+    
+    if (mode == "comparison" && !is.null(input$time_start_range) && "time_start" %in% names(parameter_final)) {
+      rng <- as.Date(input$time_start_range)
+      parameter_final$time_start <- as.Date(parameter_final$time_start)
+      parameter_final <- parameter_final[parameter_final$time_start >= rng[1] &
+                                           parameter_final$time_start <= rng[2], , drop = FALSE]
+    }
+    
+    
+    withProgress(message = if (mode == "unique") "Running unique analysis. Please wait..." else "Running comparison. Please wait...", value = 0.1, {
       tmp <- tryCatch(
         {
           pm <- if (isTRUE(input$print_map) && !is.null(shapefile.fix)) {
@@ -459,6 +496,7 @@ server <- function(input, output, session) {
             FALSE
           } else FALSE
           
+
           r <- CWP.dataset::comprehensive_cwp_dataframe_analysis(
             parameter_init = df,
             parameter_final = parameter_final,
@@ -471,7 +509,7 @@ server <- function(input, output, session) {
             parameter_time_dimension = time_cols,
             parameter_geographical_dimension = geo_dim,
             parameter_geographical_dimension_groupping = geo_group,
-            parameter_colnames_to_keep = if (PRELOAD_DATA) c("fishing_fleet", "Ocean", "species_name") else "all",
+            parameter_colnames_to_keep = if (PRELOAD_DATA) c("fishing_fleet_label", "Ocean", "species_name", "measurement_unit", "measurement_value") else "all",
             outputonly = FALSE,
             plotting_type = plotting,
             print_map = pm,
@@ -492,7 +530,6 @@ server <- function(input, output, session) {
               where(is.numeric),
               ~ format(.x, big.mark = " ", scientific = FALSE)
             ))
-          
           list(res = r)
         },
         error = function(e) {
@@ -629,9 +666,12 @@ server <- function(input, output, session) {
       rownames = FALSE
     ) %>%
       formatStyle(
-        'Difference',
-        backgroundColor = styleInterval(0, c( '#ccffcc','#ffcccc'))
-      )
+        'Difference (in %)',
+        backgroundColor = styleInterval(
+          0,
+          c('#ffcccc', '#ccffcc')   # rouge < 0, vert > 0
+        )
+      ) 
   })
   
   # --- Combined summary plot for comparison ---
@@ -684,8 +724,8 @@ server <- function(input, output, session) {
             tags$p(
               style = "font-weight: bold; color: grey;",
               paste0(
-                "Completely lost or appearing strata"
-              )
+                "Completely lost or appearing strata. The base dataset is ", input$title1, " and the one it is compared to is ", input$title2)
+              
             )
           } else {
             tags$p(style = "font-weight: bold; color: green;", "No stratum is gained nor lost")
@@ -745,7 +785,11 @@ server <- function(input, output, session) {
             scrollX = TRUE
           ),
           rownames = FALSE
-        )
+        )%>%
+          formatStyle(
+            'Difference in millions',
+            backgroundColor = styleInterval(0, c('#ffcccc', '#ccffcc'))
+          )
       })
     })
   })
@@ -761,8 +805,11 @@ server <- function(input, output, session) {
       rownames = FALSE
     ) %>%
       formatStyle(
-        'Difference',
-        backgroundColor = styleInterval(0, c('#ffcccc', '#ccffcc'))
+        "Difference",
+        backgroundColor = styleInterval(
+          c(-1e-12, 1e-12),                 # close to 0
+          c("#ffcccc", "transparent", "#ccffcc")
+        )
       )
   })
   
@@ -822,21 +869,88 @@ server <- function(input, output, session) {
   })
   
   # --- Dimension differences UI ---
+  # output$dimension_differences_ui <- renderUI({ ancien
+  #   res <- analysis()
+  #   if (is.null(res$compare_dimension_differences_list)) return(NULL)
+  #   
+  #   dim_list <- res$compare_dimension_differences_list
+  #   
+  #   tagList(
+  #     if (!is.null(dim_list$Groupped_all_not_disap_or_app_to_dysplay) && 
+  #         nrow(dim_list$Groupped_all_not_disap_or_app_to_dysplay) != 0) {
+  #       DTOutput("dimension_differences_table")
+  #     } else {
+  #       tags$p(style = "font-weight: bold; color: green;", 
+  #              "There are no differences between stratas aside the appearing and disappearing ones")
+  #     }
+  #   )
+  # })
+  
   output$dimension_differences_ui <- renderUI({
     res <- analysis()
-    if (is.null(res$compare_dimension_differences_list)) return(NULL)
+    df <- res$compare_dimension_differences_list$Groupped_all_not_disap_or_app_to_dysplay
+    if (is.null(df) || nrow(df) == 0) return(NULL)
     
-    dim_list <- res$compare_dimension_differences_list
+    if (!"Dimension" %in% names(df)) {
+      return(tagList(
+        tags$p(style="font-weight:bold;color:#ffcc00;",
+               "Column 'Dimension' not found in dimension differences table."),
+        DTOutput("dimension_differences_table_fallback")
+      ))
+    }
+    
+    dims <- sort(unique(df$Dimension))
+    
+    panels <- lapply(dims, function(d) {
+      tabPanel(
+        title = d,
+        div(style = "overflow-x:auto;", DTOutput(paste0("dimdiff_", d)))
+      )
+    })
     
     tagList(
-      if (!is.null(dim_list$Groupped_all_not_disap_or_app_to_dysplay) && 
-          nrow(dim_list$Groupped_all_not_disap_or_app_to_dysplay) != 0) {
-        DTOutput("dimension_differences_table")
-      } else {
-        tags$p(style = "font-weight: bold; color: green;", 
-               "There are no differences between stratas aside the appearing and disappearing ones")
-      }
+      tags$h3("Dimension differences between datasets",
+              style="font-weight:bold; margin-bottom: 10px;"),
+      do.call(tabsetPanel, c(list(type = "tabs"), panels))
     )
+  })
+  
+  observe({
+    res <- analysis()
+    df <- res$compare_dimension_differences_list$Groupped_all_not_disap_or_app_to_dysplay
+    if (is.null(df) || nrow(df) == 0 || !"Dimension" %in% names(df)) return()
+    
+    dims <- unique(df$Dimension)
+    
+    lapply(dims, function(d) {
+      output[[paste0("dimdiff_", d)]] <- DT::renderDT({
+        sub <- df[df$Dimension == d, , drop = FALSE] %>%dplyr::ungroup() %>% 
+          dplyr::select(-Dimension) %>%
+          rename(
+            !!paste0("Value ", input$title1) := `Values dataset 1`,
+            !!paste0("Value ", input$title2) := `Values dataset 2`
+          )
+        
+        
+        dt <- DT::datatable(
+          sub,
+          options = list(pageLength = 10, scrollX = TRUE),
+          caption = paste0("Dimension differences — ", d),
+          rownames = FALSE
+        )
+        
+        # Coloriser seulement si la colonne existe
+        col_to_color <- "Difference (in %)"
+        if (col_to_color %in% names(sub)) {
+          dt <- dt %>% DT::formatStyle(
+            col_to_color,
+            backgroundColor = DT::styleInterval(0, c("#ffcccc", "#ccffcc"))
+          )
+        }
+        
+        dt
+      })
+    })
   })
   
   output$dimension_differences_table <- renderDT({

@@ -17,7 +17,7 @@ load_default_data <- function(PRELOAD_DATA = FALSE, PRELOAD_DATA_PATH = "data/")
   if (file.exists(dataset1_path)) {
     default_data$dataset1 <- tryCatch({
       message("chargement + renommer")
-      qs::qread(dataset1_path) %>% dplyr::rename(fishing_fleet = fishing_fleet_label, time_start = year) %>% dplyr::mutate(measurement_value = round(measurement_value,3)) %>% dplyr::mutate(measurement_unit = "Tons")
+      qs::qread(dataset1_path) %>% dplyr::rename(time_start = year) %>% dplyr::mutate(measurement_value = round(measurement_value,3)) %>% dplyr::mutate(measurement_unit = "Tons")
     }, error = function(e) {
       message("Erreur chargement FSJ MAPPED dataset: ", e$message)
       NULL
@@ -28,7 +28,7 @@ load_default_data <- function(PRELOAD_DATA = FALSE, PRELOAD_DATA_PATH = "data/")
   dataset2_path <- file.path(PRELOAD_DATA_PATH, "NCD_MAPPED.qs")
   if (file.exists(dataset2_path)) {
     default_data$dataset2 <- tryCatch({
-      qs::qread(dataset2_path) %>% dplyr::mutate(fishing_fleet = fishing_fleet_label)%>% dplyr::mutate(measurement_value = round(measurement_value,3)) %>% dplyr::mutate(measurement_unit = "Tons")
+      qs::qread(dataset2_path)%>% dplyr::mutate(measurement_value = round(measurement_value,3)) %>% dplyr::mutate(measurement_unit = "Tons")
     }, error = function(e) {
       message("Erreur chargement GTA nominal catch mapped: ", e$message)
       NULL

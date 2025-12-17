@@ -14,6 +14,7 @@ options(shiny.maxRequestSize = 200*1024^2)  # 200 MB upload limit
   library(CWP.dataset)
   library(qs)
   library(shinyjs)
+library(htmltools)
 # })
 
 PRELOAD_DATA <- Sys.getenv("SHINY_PRELOAD_DATA", "FALSE") == "TRUE"
@@ -106,7 +107,7 @@ require(futile.logger)
 
 
 
-if (PRELOAD_DATA) {
+if (PRELOAD_DATA & !file.exists("data/PRELOADED_RESULT.qs")) {
   
   time_cols <- if (!is.null(default_data$parameters$time_cols)) default_data$parameters$time_cols else "time_start"
   geo_dim   <- if (!is.null(default_data$parameters$geo_dim))   default_data$parameters$geo_dim   else "geographic_identifier"
@@ -130,7 +131,7 @@ if (PRELOAD_DATA) {
     parameter_time_dimension =  time_cols,
     parameter_geographical_dimension =  geo_dim,
     parameter_geographical_dimension_groupping =  geo_group,
-    parameter_colnames_to_keep = c("fishing_fleet", "Ocean", "species_name", "measurement_unit", "measurement_value"),
+    parameter_colnames_to_keep = c("fishing_fleet_label", "Ocean", "species_name", "measurement_unit", "measurement_value"),
     outputonly = FALSE,
     plotting_type =  plotting,
     continent = continent,
@@ -150,9 +151,23 @@ if (PRELOAD_DATA) {
       where(is.numeric),
       ~ format(.x, big.mark = " ", scientific = FALSE)
     ))
-  
+  qs::qsave(PRELOADED_RESULT, "data/PRELOADED_RESULT.qs")
+} else if (PRELOAD_DATA & file.exists("data/PRELOADED_RESULT.qs")){
+  time_cols <- if (!is.null(default_data$parameters$time_cols)) default_data$parameters$time_cols else "time_start"
+  geo_dim   <- if (!is.null(default_data$parameters$geo_dim))   default_data$parameters$geo_dim   else "geographic_identifier"
+  geo_group <- if (!is.null(default_data$parameters$geo_group)) default_data$parameters$geo_group else "gridtype"
+  fact      <- if (!is.null(default_data$parameters$fact))      default_data$parameters$fact      else "catch"
+  plotting  <- if (!is.null(default_data$parameters$plotting_type)) default_data$parameters$plotting_type else "view"
+  coverage  <- if (!is.null(default_data$parameters$coverage))  isTRUE(default_data$parameters$coverage) else TRUE
+  removemap <- if (!is.null(default_data$parameters$removemap)) isTRUE(default_data$parameters$removemap) else FALSE
+  debug_small <- if (!is.null(default_data$parameters$debug_small)) isTRUE(default_data$parameters$debug_small) else FALSE
+  continent <- if (!is.null(default_data$parameters$continent)) default_data$parameters$continent else ""
+  parameter_colnames_to_keep <- if (!is.null(default_data$parameters$continent)) default_data$parameters$continent else ""
+  PRELOADED_RESULT <- qs::qread("data/PRELOADED_RESULT.qs")
 } else {
   PRELOADED_RESULT <- NULL
 }
+
+
 
 
