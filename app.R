@@ -66,6 +66,9 @@ ui <- dashboardPage(
     h4("Filters (species / fleet)"),
     selectizeInput("species", "Species", choices = NULL, multiple = TRUE, options = list(placeholder = "Select species...")),
     selectizeInput("fleet", "Fishing fleet", choices = NULL, multiple = TRUE, options = list(placeholder = "Select fleets...")),
+    # selectizeInput("COUNTRY", "COUNTRY", choices = NULL, multiple = TRUE, options = list(placeholder = "Select COUNTRY")),
+    # selectizeInput("species_aggregate", "species_aggregate", choices = NULL, multiple = TRUE, options = list(placeholder = "Select species_aggregate")),
+    selectizeInput("Ocean", "Ocean", choices = NULL, multiple = TRUE, options = list(placeholder = "Select Ocean")),
     
     hr(),
     actionButton("run_btn", "Run analysis", icon = icon("rocket"), class = "btn-primary")
@@ -353,8 +356,15 @@ server <- function(input, output, session) {
     mem <- format(object.size(df), units = "auto")
     output$vb_mem <- renderValueBox({ valueBox(mem, "Approx. size Dataset 1", icon = icon("database"), color = "purple") })
     
-    if ("species" %in% names(df)) updateSelectizeInput(session, "species", choices = sort(unique(df$species)), server = TRUE)
+    if ("species_name" %in% names(df)) updateSelectizeInput(session, "species", choices = sort(unique(df$species_name)), server = TRUE)
     if ("fishing_fleet" %in% names(df)) updateSelectizeInput(session, "fleet", choices = sort(unique(df$fishing_fleet)), server = TRUE)
+    if(PRELOAD_DATA){
+      # if ("COUNTRY" %in% names(df)) updateSelectizeInput(session, "COUNTRY", choices = sort(unique(df$COUNTRY)), server = TRUE)
+      if ("Ocean" %in% names(df)) updateSelectizeInput(session, "Ocean", choices = sort(unique(df$Ocean)), server = TRUE)
+      # if ("species_aggregate" %in% names(df)) updateSelectizeInput(session, "species_aggregate", choices = sort(unique(df$species_aggregate)), server = TRUE)
+      
+    }
+    
   })
   
   # --- valueBoxes dataset2 ---
@@ -430,8 +440,12 @@ server <- function(input, output, session) {
     }
     
     filt <- list(
-      species = if (length(input$species) > 0) input$species else NULL,
-      fishing_fleet = if (length(input$fleet) > 0) input$fleet else NULL
+      species_name = if (length(input$species) > 0) input$species else NULL,
+      fishing_fleet = if (length(input$fleet) > 0) input$fleet else NULL,
+      # COUNTRY = if (length(input$COUNTRY) > 0) input$COUNTRY else NULL,
+      # species_aggregate = if (length(input$species_aggregate) > 0) input$species_aggregate else NULL,
+      Ocean = if (length(input$Ocean) > 0) input$Ocean else NULL
+      
     )
     
     t0 <- Sys.time()
@@ -457,7 +471,7 @@ server <- function(input, output, session) {
             parameter_time_dimension = time_cols,
             parameter_geographical_dimension = geo_dim,
             parameter_geographical_dimension_groupping = geo_group,
-            parameter_colnames_to_keep = "all",
+            parameter_colnames_to_keep = if (PRELOAD_DATA) c("fishing_fleet", "Ocean", "species_name") else "all",
             outputonly = FALSE,
             plotting_type = plotting,
             print_map = pm,
@@ -643,38 +657,97 @@ server <- function(input, output, session) {
     if (is.null(res$compare_strata_differences_list)) return(NULL)
     
     strata_list <- res$compare_strata_differences_list
+    disap <- strata_list$disapandap
     
     tagList(
-      # Table number_init_column_final_column
-      if (!is.null(strata_list$number_init_column_final_column)) {
-        DTOutput("strata_numbers_table")
-      },
-      # Message sur les strates perdues/trouvées
-      if (!is.null(strata_list$strates_perdues_first_10) && nrow(strata_list$strates_perdues_first_10) != 0) {
-        tags$p(style = "font-weight: bold;color: grey;",
-               "The strata differences (completely lost or appearing) between the first one and the second one (representing ",
-               round(strata_list$pourcentage_strates_perdues), "% of the total number of strata) are:")
-      } else {
-        tags$p(style = "font-weight: bold; color: green;", "No stratum is gained nor lost")
-      },
+      tags$h3(
+        "Strata differences between initial and final datasets",
+        style = "font-weight: bold; margin-bottom: 20px;"
+      ),
       
-      # Table disapandap si disponible
-      if (!is.null(strata_list$disapandap) && nrow(strata_list$disapandap) > 0) {
-        DTOutput("strata_disapandap_table")
-      }
+      fluidRow(
+        column(
+          width = 6,
+          tags$h4("Shared strata (initial vs final)", style = "font-weight: bold;"),
+          if (!is.null(strata_list$number_init_column_final_column)) {
+            DTOutput("strata_numbers_table")
+          }
+        ),
+        
+        column(
+          width = 6,
+          tags$h4("Strata that disappeared or appeared", style = "font-weight: bold;"),
+          
+          # Message
+          if (!is.null(strata_list$strates_perdues_first_10) &&
+              nrow(strata_list$strates_perdues_first_10) != 0) {
+            tags$p(
+              style = "font-weight: bold; color: grey;",
+              paste0(
+                "Completely lost or appearing strata"
+              )
+            )
+          } else {
+            tags$p(style = "font-weight: bold; color: green;", "No stratum is gained nor lost")
+          },
+          
+          # Onglets par Dimension
+          if (!is.null(disap) && nrow(disap) > 0 && "Dimension" %in% names(disap)) {
+            dims <- sort(unique(disap$Dimension))
+            
+            do.call(
+              tabsetPanel,
+              c(
+                list(type = "tabs"),
+                lapply(dims, function(d) {
+                  tabPanel(
+                    title = d,
+                    div(style = "overflow-x:auto;", DTOutput(paste0("disapandap_", d)))
+                  )
+                })
+              )
+            )
+          }
+        )
+      )
     )
   })
   
-  output$strata_disapandap_table <- renderDT({
+  
+  
+  # output$strata_disapandap_table <- renderDT({
+  #   res <- analysis()
+  #   if (is.null(res$compare_strata_differences_list$disapandap)) return(NULL)
+  #   
+  #   datatable(
+  #     res$compare_strata_differences_list$disapandap,
+  #     options = list(pageLength = 10, scrollX = TRUE),
+  #     caption = "Strata that disappeared or appeared",
+  #     rownames = FALSE
+  #   )
+  # })
+  
+  observe({
     res <- analysis()
-    if (is.null(res$compare_strata_differences_list$disapandap)) return(NULL)
+    if (is.null(res$compare_strata_differences_list)) return()
     
-    datatable(
-      res$compare_strata_differences_list$disapandap,
-      options = list(pageLength = 10, scrollX = TRUE),
-      caption = "Strata that disappeared or appeared",
-      rownames = FALSE
-    )
+    disap <- res$compare_strata_differences_list$disapandap
+    if (is.null(disap) || nrow(disap) == 0 || !"Dimension" %in% names(disap)) return()
+    
+    dims <- unique(disap$Dimension)
+    
+    lapply(dims, function(d) {
+      output[[paste0("disapandap_", d)]] <- DT::renderDT({
+        DT::datatable(
+          disap[disap$Dimension == d, , drop = FALSE] %>% dplyr::select(-Dimension),
+          options = list(
+            pageLength = 10,
+            scrollX = TRUE
+          ),
+          rownames = FALSE
+        )
+      })
+    })
   })
   
   output$strata_numbers_table <- renderDT({
