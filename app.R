@@ -486,7 +486,16 @@ server <- function(input, output, session) {
                                            parameter_final$time_start <= rng[2], , drop = FALSE]
     }
     
-    
+    showModal(modalDialog(
+      title = NULL,
+      footer = NULL,
+      easyClose = FALSE,
+      fade = TRUE,
+      size = "m",
+      div(style = "text-align:center; font-size:24px; font-weight:700; padding:20px;",
+          "⏳ Running analysis…", tags$br(), "Please wait"
+      )
+    ))
     withProgress(message = if (mode == "unique") "Running unique analysis. Please wait..." else "Running comparison. Please wait...", value = 0.1, {
       tmp <- tryCatch(
         {
@@ -533,6 +542,7 @@ server <- function(input, output, session) {
           list(res = r)
         },
         error = function(e) {
+          removeModal()
           showModal(modalDialog(title = "Analysis error", easyClose = TRUE,
                                 tagList(tags$pre(conditionMessage(e)))))
           NULL
@@ -549,9 +559,10 @@ server <- function(input, output, session) {
       analysis(res)
       
       incProgress(0.9)
+      removeModal()
     })
   }, ignoreInit = TRUE)
-  
+ 
   if (preload_mode && has_dataset1 && has_dataset2) {
     observeEvent(TRUE, {
       updateRadioButtons(session, "analysis_mode", selected = "comparison")
@@ -702,13 +713,13 @@ server <- function(input, output, session) {
     tagList(
       tags$h3(
         "Strata differences between initial and final datasets",
-        style = "font-weight: bold; margin-bottom: 20px;"
+        style = "font-weight: bold; margin-bottom: 20px; color:#000000;"
       ),
       
       fluidRow(
         column(
           width = 6,
-          tags$h4("Shared strata (initial vs final)", style = "font-weight: bold;"),
+          tags$h4("Shared strata (initial vs final)", style = "font-weight: bold; color:#000000;"),
           if (!is.null(strata_list$number_init_column_final_column)) {
             DTOutput("strata_numbers_table")
           }
@@ -716,7 +727,7 @@ server <- function(input, output, session) {
         
         column(
           width = 6,
-          tags$h4("Strata that disappeared or appeared", style = "font-weight: bold;"),
+          tags$h4("Strata that disappeared or appeared", style = "font-weight: bold; color:#000000;"),
           
           # Message
           if (!is.null(strata_list$strates_perdues_first_10) &&
@@ -893,7 +904,7 @@ server <- function(input, output, session) {
     
     if (!"Dimension" %in% names(df)) {
       return(tagList(
-        tags$p(style="font-weight:bold;color:#ffcc00;",
+        tags$p(style="font-weight:bold;color:#000000;",
                "Column 'Dimension' not found in dimension differences table."),
         DTOutput("dimension_differences_table_fallback")
       ))
@@ -910,7 +921,7 @@ server <- function(input, output, session) {
     
     tagList(
       tags$h3("Dimension differences between datasets",
-              style="font-weight:bold; margin-bottom: 10px;"),
+              style="font-weight:bold; margin-bottom: 10px; color:#000000"),
       do.call(tabsetPanel, c(list(type = "tabs"), panels))
     )
   })
