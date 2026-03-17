@@ -1,5 +1,5 @@
 source("global.R", local = TRUE)
-
+options(shiny.maxRequestSize = 1000 * 1024^2)
 # ---- UI ----
 ui <- dashboardPage(
   skin = "blue",
