@@ -1,4 +1,5 @@
 source("global.R", local = TRUE)
+require(RColorBrewer)
 options(shiny.maxRequestSize = 1000 * 1024^2)
 # ---- UI ----
 ui <- dashboardPage(
@@ -416,6 +417,15 @@ server <- function(input, output, session) {
   #   #                  paste0("debug_small=", input$debug_small))
   # }, ignoreInit = TRUE)
   
+  validate_comparison_dataset(df, "Dataset 1")
+  
+  if (mode == "comparison") {
+    validate_comparison_dataset(
+      parameter_final,
+      "Dataset 2"
+    )
+  }
+  
   # --- Run analysis avec mode unique ou comparaison ---
   observeEvent(input$run_btn, {
     # mode forcé en comparaison si preload_mode
@@ -447,6 +457,18 @@ server <- function(input, output, session) {
         showNotification("Dataset 2 is missing for comparison (neither preloaded nor uploaded).", type = "error")
         return()
       }
+    }
+    
+    if (
+      mode == "comparison" &&
+      !"measurement_value" %in% names(parameter_final)
+    ) {
+      showNotification(
+        "Missing required column: 'measurement_value' in dataset 2.",
+        type = "error",
+        duration = 8
+      )
+      return()
     }
     
     if (!"measurement_value" %in% names(df)) {
@@ -532,13 +554,29 @@ server <- function(input, output, session) {
             removemap = isTRUE(removemap),
             topnumber = 6
           )
-          r$summary_of_differences <- 
-            r$summary_of_differences %>%
-            dplyr::mutate(across(where(is.numeric), ~ round(.x, 2)))%>%
-            dplyr::mutate(across(
-              where(is.numeric),
-              ~ format(.x, big.mark = " ", scientific = FALSE)
-            ))
+          if (
+            !is.null(r$summary_of_differences) &&
+            inherits(r$summary_of_differences, "data.frame")
+          ) {
+            r$summary_of_differences <-
+              r$summary_of_differences %>%
+              dplyr::mutate(
+                dplyr::across(
+                  where(is.numeric),
+                  ~ round(.x, 2)
+                )
+              ) %>%
+              dplyr::mutate(
+                dplyr::across(
+                  where(is.numeric),
+                  ~ format(
+                    .x,
+                    big.mark = " ",
+                    scientific = FALSE
+                  )
+                )
+              )
+          }
           list(res = r)
         },
         error = function(e) {
