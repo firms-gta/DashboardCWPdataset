@@ -417,15 +417,6 @@ server <- function(input, output, session) {
   #   #                  paste0("debug_small=", input$debug_small))
   # }, ignoreInit = TRUE)
   
-  validate_comparison_dataset(df, "Dataset 1")
-  
-  if (mode == "comparison") {
-    validate_comparison_dataset(
-      parameter_final,
-      "Dataset 2"
-    )
-  }
-  
   # --- Run analysis avec mode unique ou comparaison ---
   observeEvent(input$run_btn, {
     # mode forcé en comparaison si preload_mode
@@ -449,6 +440,8 @@ server <- function(input, output, session) {
       return()
     }
     
+    validate_comparison_dataset(df, "Dataset 1")
+    
     if (mode == "unique") {
       parameter_final <- df
     } else {
@@ -457,6 +450,13 @@ server <- function(input, output, session) {
         showNotification("Dataset 2 is missing for comparison (neither preloaded nor uploaded).", type = "error")
         return()
       }
+    }
+    
+    if (mode == "comparison") {
+      validate_comparison_dataset(
+        parameter_final,
+        "Dataset 2"
+      )
     }
     
     if (
