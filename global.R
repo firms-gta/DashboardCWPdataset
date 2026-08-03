@@ -17,6 +17,16 @@ options(shiny.maxRequestSize = 200*1024^2)  # 200 MB upload limit
 library(htmltools)
 # })
 
+dashboard_profile <- Sys.getenv(
+  "DASHBOARD_PROFILE",
+  "generic"
+)
+
+if (dashboard_profile == "ncd_vs_fs") {
+  default_data <- load_ncd_fs_default_data()
+} else {
+  default_data <- load_preloaded_data()
+}
 PRELOAD_DATA <- Sys.getenv("SHINY_PRELOAD_DATA", "FALSE") == "TRUE"
 PRELOAD_DATA_PATH <- Sys.getenv("SHINY_PRELOAD_DATA_PATH", "data/")
 

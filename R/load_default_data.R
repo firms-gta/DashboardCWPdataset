@@ -1,48 +1,39 @@
-# Fonction de chargement conditionnel
-load_default_data <- function(PRELOAD_DATA = FALSE, PRELOAD_DATA_PATH = "data/") {
-  if (!PRELOAD_DATA) {
-    message("Preloading désactivé (SHINY_PRELOAD_DATA != TRUE)")
+load_default_data <- function(
+    preload = Sys.getenv("SHINY_PRELOAD_DATA", "FALSE") == "TRUE",
+    dataset1_path = Sys.getenv(
+      "DASHBOARD_DATASET_1",
+      "data/dataset_1.qs"
+    ),
+    dataset2_path = Sys.getenv(
+      "DASHBOARD_DATASET_2",
+      "data/dataset_2.qs"
+    )
+) {
+  if (!preload) {
+    message("Preloading disabled")
     return(NULL)
   }
   
-  if (!dir.exists(PRELOAD_DATA_PATH)) {
-    message("Dossier de données non trouvé: ", PRELOAD_DATA_PATH)
-    return(NULL)
+  required_files <- c(dataset1_path, dataset2_path)
+  
+  missing_files <- required_files[!file.exists(required_files)]
+  
+  if (length(missing_files) > 0) {
+    stop(
+      "Missing preloaded datasets: ",
+      paste(missing_files, collapse = ", ")
+    )
   }
   
-  default_data <- list()
+  dataset1 <- qs::qread(dataset1_path)
+  dataset2 <- qs::qread(dataset2_path)
   
-  # Charger dataset1
-  dataset1_path <- file.path(PRELOAD_DATA_PATH, "FS_MAPPED.qs")
-  if (file.exists(dataset1_path)) {
-    default_data$dataset1 <- tryCatch({
-      message("chargement + renommer")
-      qs::qread(dataset1_path) %>% dplyr::rename(time_start = year) %>% dplyr::mutate(measurement_value = round(measurement_value,3)) %>% dplyr::mutate(measurement_unit = "Tons")
-    }, error = function(e) {
-      message("Erreur chargement FSJ MAPPED dataset: ", e$message)
-      NULL
-    })
-  }
+  validate_cwp_dataset(dataset1, "dataset 1")
+  validate_cwp_dataset(dataset2, "dataset 2")
   
-  # Charger dataset2
-  dataset2_path <- file.path(PRELOAD_DATA_PATH, "NCD_MAPPED.qs")
-  if (file.exists(dataset2_path)) {
-    default_data$dataset2 <- tryCatch({
-      qs::qread(dataset2_path)%>% dplyr::mutate(measurement_value = round(measurement_value,3)) %>% dplyr::mutate(measurement_unit = "Tons")
-    }, error = function(e) {
-      message("Erreur chargement GTA nominal catch mapped: ", e$message)
-      NULL
-    })
-  }
-  
-  # Charger les paramètres depuis CSV
-  params_path <- file.path(PRELOAD_DATA_PATH, "default_parameters.csv")
-  default_data$parameters <- load_parameters_from_csv(params_path)
-  
-  # Log du statut
-  datasets_loaded <- sum(!sapply(default_data[1:2], is.null))
-  message("✓ Préchargement: ", datasets_loaded, " dataset(s), ", 
-          if (!is.null(default_data$parameters)) "paramètres" else "pas de paramètres")
-  
-  return(default_data)
+  list(
+    dataset1 = prepare_cwp_dataset(dataset1),
+    dataset2 = prepare_cwp_dataset(dataset2),
+    parameters = load_dashboard_parameters()
+  )
 }
