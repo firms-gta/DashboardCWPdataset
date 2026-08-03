@@ -652,7 +652,6 @@ server <- function(input, output, session) {
       
       # Combined summary histogram
       if (!is.null(res$combined_summary_histogram) & !PRELOAD_DATA) {
-        browser()
         box(width = 12, title = "Combined Summary Histogram", status = "info", solidHeader = TRUE,
             plotOutput("comp_combined_summary_plot", height = 400))
       }
