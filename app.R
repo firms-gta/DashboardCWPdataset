@@ -122,20 +122,20 @@ ui <- dashboardPage(
         )
       ),
       
-      # tabItem(
-      #   tabName = "coverage",
-      #   fluidRow(
-      #     box(width = 12, title = "Time coverage (plots)", status = "info", solidHeader = TRUE,
-      #         uiOutput("time_cov_tabs")
-      #     )
-      #   )
-      #   ,
-      #   fluidRow(
-      #     box(width = 12, title = "Other dimensions (plots)", status = "info", solidHeader = TRUE,
-      #         uiOutput("other_cov_tabs")
-      #     )
-      #   )
-      # ),
+      tabItem(
+        tabName = "coverage",
+        # fluidRow(
+        #   box(width = 12, title = "Time coverage (plots)", status = "info", solidHeader = TRUE,
+        #       uiOutput("time_cov_tabs")
+        #   )
+        # )
+        # ,
+        fluidRow(
+          box(width = 12, title = "Other dimensions (plots)", status = "info", solidHeader = TRUE,
+              uiOutput("other_cov_tabs")
+          )
+        )
+      ),
       tabItem(
         tabName = "spatial",
         fluidRow(
@@ -431,7 +431,18 @@ server <- function(input, output, session) {
     coverage  <- if (!is.null(input$coverage)) isTRUE(input$coverage) else TRUE
     removemap <- if (!is.null(input$removemap)) isTRUE(input$removemap) else FALSE
     debug_small <- if (!is.null(input$debug_small)) isTRUE(input$debug_small) else FALSE
-    continent_input <- if (!is.null(input$continent)) input$continent else ""
+
+    package_file <- system.file(
+      "extdata",
+      "continent.qs",
+      package = "CWP.dataset"
+    )
+    
+    if (nzchar(package_file)) {
+      message("Loading continent layer from package extdata: ", package_file)
+      continent_input <- qs::qread(package_file)
+      sf::st_crs(continent_input) <- 4326
+    }
     parameter_colnames_to_keep <- if (PRELOAD_DATA) c("fishing_fleet_label", "Ocean", "species_name") else "all"
     
     df <- get_active_dataset1()
@@ -527,7 +538,6 @@ server <- function(input, output, session) {
             FALSE
           } else FALSE
           
-
           r <- CWP.dataset::comprehensive_cwp_dataframe_analysis(
             parameter_init = df,
             parameter_final = parameter_final,
