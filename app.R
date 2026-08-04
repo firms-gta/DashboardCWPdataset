@@ -1,4 +1,5 @@
 source("global.R", local = TRUE)
+require(RColorBrewer)
 options(shiny.maxRequestSize = 1000 * 1024^2)
 # ---- UI ----
 ui <- dashboardPage(
@@ -121,20 +122,20 @@ ui <- dashboardPage(
         )
       ),
       
-      # tabItem(
-      #   tabName = "coverage",
-      #   fluidRow(
-      #     box(width = 12, title = "Time coverage (plots)", status = "info", solidHeader = TRUE,
-      #         uiOutput("time_cov_tabs")
-      #     )
-      #   )
-      #   ,
-      #   fluidRow(
-      #     box(width = 12, title = "Other dimensions (plots)", status = "info", solidHeader = TRUE,
-      #         uiOutput("other_cov_tabs")
-      #     )
-      #   )
-      # ),
+      tabItem(
+        tabName = "coverage",
+        # fluidRow(
+        #   box(width = 12, title = "Time coverage (plots)", status = "info", solidHeader = TRUE,
+        #       uiOutput("time_cov_tabs")
+        #   )
+        # )
+        # ,
+        fluidRow(
+          box(width = 12, title = "Other dimensions (plots)", status = "info", solidHeader = TRUE,
+              uiOutput("other_cov_tabs")
+          )
+        )
+      ),
       tabItem(
         tabName = "spatial",
         fluidRow(
@@ -430,7 +431,18 @@ server <- function(input, output, session) {
     coverage  <- if (!is.null(input$coverage)) isTRUE(input$coverage) else TRUE
     removemap <- if (!is.null(input$removemap)) isTRUE(input$removemap) else FALSE
     debug_small <- if (!is.null(input$debug_small)) isTRUE(input$debug_small) else FALSE
-    continent_input <- if (!is.null(input$continent)) input$continent else ""
+
+    package_file <- system.file(
+      "extdata",
+      "continent.qs",
+      package = "CWP.dataset"
+    )
+    
+    if (nzchar(package_file)) {
+      message("Loading continent layer from package extdata: ", package_file)
+      continent_input <- qs::qread(package_file)
+      sf::st_crs(continent_input) <- 4326
+    }
     parameter_colnames_to_keep <- if (PRELOAD_DATA) c("fishing_fleet_label", "Ocean", "species_name") else "all"
     
     df <- get_active_dataset1()
@@ -438,6 +450,8 @@ server <- function(input, output, session) {
       showNotification("Dataset 1 is missing (neither preloaded nor uploaded).", type = "error")
       return()
     }
+    
+    validate_comparison_dataset(df, "Dataset 1")
     
     if (mode == "unique") {
       parameter_final <- df
@@ -447,6 +461,25 @@ server <- function(input, output, session) {
         showNotification("Dataset 2 is missing for comparison (neither preloaded nor uploaded).", type = "error")
         return()
       }
+    }
+    
+    if (mode == "comparison") {
+      validate_comparison_dataset(
+        parameter_final,
+        "Dataset 2"
+      )
+    }
+    
+    if (
+      mode == "comparison" &&
+      !"measurement_value" %in% names(parameter_final)
+    ) {
+      showNotification(
+        "Missing required column: 'measurement_value' in dataset 2.",
+        type = "error",
+        duration = 8
+      )
+      return()
     }
     
     if (!"measurement_value" %in% names(df)) {
@@ -505,7 +538,6 @@ server <- function(input, output, session) {
             FALSE
           } else FALSE
           
-
           r <- CWP.dataset::comprehensive_cwp_dataframe_analysis(
             parameter_init = df,
             parameter_final = parameter_final,
@@ -532,13 +564,29 @@ server <- function(input, output, session) {
             removemap = isTRUE(removemap),
             topnumber = 6
           )
-          r$summary_of_differences <- 
-            r$summary_of_differences %>%
-            dplyr::mutate(across(where(is.numeric), ~ round(.x, 2)))%>%
-            dplyr::mutate(across(
-              where(is.numeric),
-              ~ format(.x, big.mark = " ", scientific = FALSE)
-            ))
+          if (
+            !is.null(r$summary_of_differences) &&
+            inherits(r$summary_of_differences, "data.frame")
+          ) {
+            r$summary_of_differences <-
+              r$summary_of_differences %>%
+              dplyr::mutate(
+                dplyr::across(
+                  where(is.numeric),
+                  ~ round(.x, 2)
+                )
+              ) %>%
+              dplyr::mutate(
+                dplyr::across(
+                  where(is.numeric),
+                  ~ format(
+                    .x,
+                    big.mark = " ",
+                    scientific = FALSE
+                  )
+                )
+              )
+          }
           list(res = r)
         },
         error = function(e) {
@@ -652,7 +700,6 @@ server <- function(input, output, session) {
       
       # Combined summary histogram
       if (!is.null(res$combined_summary_histogram) & !PRELOAD_DATA) {
-        browser()
         box(width = 12, title = "Combined Summary Histogram", status = "info", solidHeader = TRUE,
             plotOutput("comp_combined_summary_plot", height = 400))
       }

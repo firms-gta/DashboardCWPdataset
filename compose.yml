@@ -1,0 +1,60 @@
+services:
+  dashboard-empty:
+    image: ghcr.io/firms-gta/dashboard-cwp-app:${APP_TAG:-main}
+    profiles:
+      - empty
+
+    ports:
+      - "${DASHBOARD_PORT:-3838}:3838"
+
+    environment:
+      SHINY_PRELOAD_DATA: "FALSE"
+      DASHBOARD_PROFILE: generic
+
+  dashboard-comparison:
+    image: ghcr.io/firms-gta/dashboard-cwp:${COMPARISON_TAG:-level1-vs-level2}
+    profiles:
+      - comparison
+
+    ports:
+      - "${DASHBOARD_PORT:-3838}:3838"
+
+    environment:
+      SHINY_PRELOAD_DATA: "TRUE"
+      DASHBOARD_PROFILE: generic
+      DASHBOARD_MODE: comparison
+
+  dashboard-local-comparison:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.imagewithdata
+      args:
+        APP_IMAGE: ${APP_IMAGE:-ghcr.io/firms-gta/dashboard-cwp-app:main}
+        DATA_IMAGE: ${DATA_IMAGE:-ghcr.io/firms-gta/tunaatlas-data:main}
+        DATASET_1_FILE: ${DATASET_1_FILE}
+        DATASET_2_FILE: ${DATASET_2_FILE}
+        DATASET_1_LABEL: ${DATASET_1_LABEL:-Dataset 1}
+        DATASET_2_LABEL: ${DATASET_2_LABEL:-Dataset 2}
+
+    profiles:
+      - build-comparison
+
+    ports:
+      - "${DASHBOARD_PORT:-3838}:3838"
+
+    environment:
+      SHINY_PRELOAD_DATA: "TRUE"
+      DASHBOARD_PROFILE: generic
+      DASHBOARD_MODE: comparison
+
+  dashboard-ncd-fs:
+    image: ghcr.io/firms-gta/dashboard-cwp-ncd-fs:${NCD_FS_TAG:-main}
+    profiles:
+      - ncd-fs
+
+    ports:
+      - "${DASHBOARD_PORT:-3838}:3838"
+
+    environment:
+      SHINY_PRELOAD_DATA: "TRUE"
+      DASHBOARD_PROFILE: ncd_vs_fs

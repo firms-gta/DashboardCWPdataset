@@ -25,7 +25,7 @@
       "RemoteRepo": "CWP.dataset",
       "RemoteUsername": "bastienird",
       "RemoteRef": "HEAD",
-      "RemoteSha": "c8b473ba09114c934cef4566909ab7d5726044a8",
+      "RemoteSha": "3e2ac50c8e2b9b1395af2eff92f9ffb1d1a1d17f",
       "Requirements": [
         "DBI",
         "DT",
@@ -65,7 +65,7 @@
         "xts",
         "yaml"
       ],
-      "Hash": "93a2bc6a51c041980bb115d91d0a99d8"
+      "Hash": "f0d1607e3674c73e390c041a6b362284"
     },
     "DBI": {
       "Package": "DBI",
@@ -213,7 +213,7 @@
       "Package": "askpass",
       "Version": "1.2.1",
       "Source": "Repository",
-      "Repository": "https://packagemanager.posit.co/cran/__linux__/jammy/latest",
+      "Repository": "CRAN",
       "Requirements": [
         "sys"
       ],
@@ -874,7 +874,7 @@
       "Package": "gtable",
       "Version": "0.3.6",
       "Source": "Repository",
-      "Repository": "https://packagemanager.posit.co/cran/__linux__/jammy/latest",
+      "Repository": "CRAN",
       "Requirements": [
         "R",
         "cli",
@@ -1817,7 +1817,7 @@
       "Package": "shinydashboard",
       "Version": "0.7.3",
       "Source": "Repository",
-      "Repository": "CRAN",
+      "Repository": "https://packagemanager.posit.co/cran/__linux__/focal/latest",
       "Requirements": [
         "R",
         "htmltools",
@@ -1831,7 +1831,7 @@
       "Package": "shinyjs",
       "Version": "2.1.0",
       "Source": "Repository",
-      "Repository": "CRAN",
+      "Repository": "https://packagemanager.posit.co/cran/__linux__/focal/latest",
       "Requirements": [
         "R",
         "digest",
@@ -1978,7 +1978,7 @@
       "Package": "sys",
       "Version": "3.4.3",
       "Source": "Repository",
-      "Repository": "https://packagemanager.posit.co/cran/__linux__/jammy/latest",
+      "Repository": "CRAN",
       "Hash": "de342ebfebdbf40477d0758d05426646"
     },
     "systemfonts": {
@@ -2008,7 +2008,7 @@
         "Rcpp",
         "methods"
       ],
-      "Hash": "f5099153b1731d554e8b2fd779032c36"
+      "Hash": "e952d0412b1c73b6c61db37130261567"
     },
     "textshaping": {
       "Package": "textshaping",
@@ -2324,7 +2324,7 @@
       "Package": "yaml",
       "Version": "2.3.10",
       "Source": "Repository",
-      "Repository": "https://packagemanager.posit.co/cran/__linux__/jammy/latest",
+      "Repository": "CRAN",
       "Hash": "51dab85c6c98e50a18d7551e9d49f76c"
     },
     "zip": {
