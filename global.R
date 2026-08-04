@@ -21,7 +21,8 @@ dashboard_profile <- Sys.getenv(
   "DASHBOARD_PROFILE",
   "generic"
 )
-
+source(here::here("R/load_ncd_fs_default_data.R"))
+source(here::here("R/load_preloaded_data.R"))
 if (dashboard_profile == "ncd_vs_fs") {
   default_data <- load_ncd_fs_default_data()
 } else {
