@@ -66,6 +66,13 @@ ui <- dashboardPage(
     hr(),
     h4("Filters (species / fleet)"),
     uiOutput("time_start_filter_ui"),
+    selectizeInput(
+      "dimensions_to_keep",
+      "Dimensions to analyse",
+      choices = default_data$dimension_columns,
+      selected = default_data$dimension_columns,
+      multiple = TRUE
+    ),
     selectizeInput("species_name", "Species", choices = NULL, multiple = TRUE, options = list(placeholder = "Select species...")),
     selectizeInput("fishing_fleet_label", "Fishing fleet", choices = NULL, multiple = TRUE, options = list(placeholder = "Select fleets...")),
     # selectizeInput("COUNTRY", "COUNTRY", choices = NULL, multiple = TRUE, options = list(placeholder = "Select COUNTRY")),

@@ -27,21 +27,19 @@ services:
   dashboard-local-comparison:
     build:
       context: .
-      dockerfile: docker/Dockerfile.imagewithdata
+      dockerfile: Dockerfile.with-gta-data
       args:
         APP_IMAGE: ${APP_IMAGE:-ghcr.io/firms-gta/dashboard-cwp-app:main}
         DATA_IMAGE: ${DATA_IMAGE:-ghcr.io/firms-gta/tunaatlas-data:main}
         DATASET_1_FILE: ${DATASET_1_FILE}
-        DATASET_2_FILE: ${DATASET_2_FILE}
-        DATASET_1_LABEL: ${DATASET_1_LABEL:-Dataset 1}
-        DATASET_2_LABEL: ${DATASET_2_LABEL:-Dataset 2}
-
+        DATASET_2_FILE: ${DATASET_2_FILE:-}
+  
     profiles:
       - build-comparison
-
+  
     ports:
       - "${DASHBOARD_PORT:-3838}:3838"
-
+  
     environment:
       SHINY_PRELOAD_DATA: "TRUE"
       DASHBOARD_PROFILE: generic

@@ -1,5 +1,8 @@
 # Fonction de chargement conditionnel
-load_default_data <- function(PRELOAD_DATA = FALSE, PRELOAD_DATA_PATH = "data/") {
+load_ncd_fs_default_data <- function(
+    PRELOAD_DATA = FALSE,
+    PRELOAD_DATA_PATH = "data/"
+) {
   if (!PRELOAD_DATA) {
     message("Preloading désactivé (SHINY_PRELOAD_DATA != TRUE)")
     return(NULL)

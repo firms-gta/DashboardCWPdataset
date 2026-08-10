@@ -1,0 +1,30 @@
+# syntax=docker/dockerfile:1.7
+
+ARG APP_IMAGE
+ARG DATA_IMAGE
+
+FROM ${DATA_IMAGE} AS data
+FROM ${APP_IMAGE}
+
+ARG DATASET_1_FILE
+ARG DATASET_2_FILE=""
+
+ARG DATASET_1_TITLE="GTA Level 1"
+ARG DATASET_2_TITLE="GTA Level 2"
+
+ENV DASHBOARD_TITLE_1="${DATASET_1_TITLE}"
+ENV DASHBOARD_TITLE_2="${DATASET_2_TITLE}"
+
+WORKDIR /root/DashboardCWPdataset
+
+RUN mkdir -p /data
+
+RUN --mount=type=bind,from=data,source=/data,target=/source-data \
+    cp "/source-data/${DATASET_1_FILE}" /data/dataset_1.qs && \
+    if [ -n "${DATASET_2_FILE}" ]; then \
+      cp "/source-data/${DATASET_2_FILE}" /data/dataset_2.qs; \
+    fi
+
+ENV SHINY_PRELOAD_DATA=TRUE \
+    DASHBOARD_PROFILE=generic \
+    DASHBOARD_DATASET_1=/data/dataset_1.qs
