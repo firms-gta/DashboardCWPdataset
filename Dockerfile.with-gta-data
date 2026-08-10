@@ -27,4 +27,5 @@ RUN --mount=type=bind,from=data,source=/data,target=/source-data \
 
 ENV SHINY_PRELOAD_DATA=TRUE \
     DASHBOARD_PROFILE=generic \
-    DASHBOARD_DATASET_1=/data/dataset_1.qs
+    DASHBOARD_DATASET_1=/data/dataset_1.qs \
+    DASHBOARD_DATASET_2=/data/dataset_2.qs

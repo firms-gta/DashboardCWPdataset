@@ -386,6 +386,17 @@ if (PRELOAD_DATA && !file.exists("data/PRELOADED_RESULT.qs")) {
     "Dataset 2"
   }
   
+  columns_to_keep <- unique(c(
+    default_data$dimension_columns,
+    "measurement_unit",
+    "measurement_value"
+  ))
+  
+  message(
+    "Default analysis columns: ",
+    paste(columns_to_keep, collapse = ", ")
+  )
+  
   PRELOADED_RESULT <- CWP.dataset::comprehensive_cwp_dataframe_analysis(
     parameter_init = default_data$dataset1,
     parameter_final = default_data$dataset2,
@@ -414,7 +425,7 @@ if (PRELOAD_DATA && !file.exists("data/PRELOADED_RESULT.qs")) {
     
     parameter_geographical_dimension_groupping = geo_group,
     
-    parameter_colnames_to_keep = "all",
+    parameter_colnames_to_keep = columns_to_keep,
     
     outputonly = FALSE,
     

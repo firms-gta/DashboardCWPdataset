@@ -64,20 +64,70 @@ ui <- dashboardPage(
     checkboxInput("debug_small", "DEBUG: run on first 5000 rows", FALSE),
     
     hr(),
-    h4("Filters (species / fleet)"),
-    uiOutput("time_start_filter_ui"),
+    hr(),
+    
+    h4("Analysis dimensions"),
+    
     selectizeInput(
       "dimensions_to_keep",
       "Dimensions to analyse",
-      choices = default_data$dimension_columns,
-      selected = default_data$dimension_columns,
+      choices = if (
+        PRELOAD_DATA &&
+        !is.null(default_data$dimension_columns)
+      ) {
+        default_data$dimension_columns
+      } else {
+        character(0)
+      },
+      selected = if (
+        PRELOAD_DATA &&
+        !is.null(default_data$dimension_columns)
+      ) {
+        default_data$dimension_columns
+      } else {
+        character(0)
+      },
       multiple = TRUE
     ),
-    selectizeInput("species_name", "Species", choices = NULL, multiple = TRUE, options = list(placeholder = "Select species...")),
-    selectizeInput("fishing_fleet_label", "Fishing fleet", choices = NULL, multiple = TRUE, options = list(placeholder = "Select fleets...")),
-    # selectizeInput("COUNTRY", "COUNTRY", choices = NULL, multiple = TRUE, options = list(placeholder = "Select COUNTRY")),
-    # selectizeInput("species_aggregate", "species_aggregate", choices = NULL, multiple = TRUE, options = list(placeholder = "Select species_aggregate")),
-    selectizeInput("Ocean", "Ocean", choices = NULL, multiple = TRUE, options = list(placeholder = "Select Ocean")),
+    
+    hr(),
+    
+    h4("Filters"),
+    
+    uiOutput("time_start_filter_ui"),
+    
+    selectizeInput(
+      "filter_columns_to_show",
+      "Filters to display",
+      choices = if (
+        PRELOAD_DATA &&
+        !is.null(default_data$filter_columns)
+      ) {
+        default_data$filter_columns
+      } else {
+        character(0)
+      },
+      selected = if (
+        PRELOAD_DATA &&
+        !is.null(default_data$filter_columns)
+      ) {
+        intersect(
+          c(
+            "species",
+            "fishing_fleet",
+            "gear_type",
+            "fishing_mode",
+            "source_authority"
+          ),
+          default_data$filter_columns
+        )
+      } else {
+        character(0)
+      },
+      multiple = TRUE
+    ),
+    
+    uiOutput("dynamic_filters"),
     
     hr(),
     actionButton("run_btn", "Run analysis", icon = icon("rocket"), class = "btn-primary")
@@ -386,15 +436,6 @@ server <- function(input, output, session) {
     mem <- format(object.size(df), units = "auto")
     output$vb_mem <- renderValueBox({ valueBox(mem, "Approx. size Dataset 1", icon = icon("database"), color = "purple") })
     
-    if ("species_name" %in% names(df)) updateSelectizeInput(session, "species_name", choices = sort(unique(df$species_name)), server = TRUE)
-    if ("fishing_fleet_label" %in% names(df)) updateSelectizeInput(session, "fishing_fleet_label", choices = sort(unique(df$fishing_fleet_label)), server = TRUE)
-    if(PRELOAD_DATA){
-      # if ("COUNTRY" %in% names(df)) updateSelectizeInput(session, "COUNTRY", choices = sort(unique(df$COUNTRY)), server = TRUE)
-      if ("Ocean" %in% names(df)) updateSelectizeInput(session, "Ocean", choices = sort(unique(df$Ocean)), server = TRUE)
-      # if ("species_aggregate" %in% names(df)) updateSelectizeInput(session, "species_aggregate", choices = sort(unique(df$species_aggregate)), server = TRUE)
-      
-    }
-    
   })
   
   # --- valueBoxes dataset2 ---
@@ -469,6 +510,48 @@ server <- function(input, output, session) {
         return()
       }
     }
+    output$dynamic_filters <- renderUI({
+      
+      req(input$filter_columns_to_show)
+      
+      df1 <- get_active_dataset1()
+      df2 <- get_active_dataset2()
+      
+      req(df1)
+      
+      cols <- input$filter_columns_to_show
+      
+      if (length(cols) == 0) {
+        return(NULL)
+      }
+      
+      lapply(cols, function(col) {
+        
+        values <- c(
+          df1[[col]],
+          if (!is.null(df2) && col %in% names(df2)) {
+            df2[[col]]
+          } else {
+            NULL
+          }
+        )
+        
+        values <- unique(values)
+        values <- values[!is.na(values)]
+        values <- sort(values)
+        
+        selectizeInput(
+          inputId = paste0("filter_", col),
+          label = col,
+          choices = values,
+          selected = NULL,
+          multiple = TRUE,
+          options = list(
+            placeholder = paste("Filter", col, "...")
+          )
+        )
+      })
+    })
     
     if (mode == "comparison") {
       validate_comparison_dataset(
@@ -501,14 +584,6 @@ server <- function(input, output, session) {
       parameter_final <- utils::head(parameter_final, 5000)
     }
     
-    filt <- list(
-      species_name = if (length(input$species_name) > 0) input$species_name else NULL,
-      fishing_fleet_label = if (length(input$fishing_fleet_label) > 0) input$fishing_fleet_label else NULL,
-      # COUNTRY = if (length(input$COUNTRY) > 0) input$COUNTRY else NULL,
-      # species_aggregate = if (length(input$species_aggregate) > 0) input$species_aggregate else NULL,
-      Ocean = if (length(input$Ocean) > 0) input$Ocean else NULL
-      
-    )
     
     t0 <- Sys.time()
     
@@ -525,6 +600,43 @@ server <- function(input, output, session) {
       parameter_final <- parameter_final[parameter_final$time_start >= rng[1] &
                                            parameter_final$time_start <= rng[2], , drop = FALSE]
     }
+    # ---- Dynamic filters ----
+    
+    filter_cols <- input$filter_columns_to_show
+    
+    if (!is.null(filter_cols) && length(filter_cols) > 0) {
+      
+      for (col in filter_cols) {
+        
+        selected_values <- input[[paste0("filter_", col)]]
+        
+        if (
+          !is.null(selected_values) &&
+          length(selected_values) > 0
+        ) {
+          
+          if (col %in% names(df)) {
+            df <- df[
+              df[[col]] %in% selected_values,
+              ,
+              drop = FALSE
+            ]
+          }
+          
+          if (
+            mode == "comparison" &&
+            col %in% names(parameter_final)
+          ) {
+            parameter_final <- parameter_final[
+              parameter_final[[col]] %in% selected_values,
+              ,
+              drop = FALSE
+            ]
+          }
+        }
+      }
+    }
+    filt <- list()
     
     showModal(modalDialog(
       title = NULL,
@@ -545,6 +657,53 @@ server <- function(input, output, session) {
             FALSE
           } else FALSE
           
+          selected_dimensions <- input$dimensions_to_keep
+          
+          if (
+            is.null(selected_dimensions) ||
+            length(selected_dimensions) == 0
+          ) {
+            removeModal()
+            
+            showNotification(
+              "Select at least one dimension to analyse.",
+              type = "error"
+            )
+            
+            return()
+          }
+          
+          # Sécurité : uniquement les dimensions réellement communes
+          selected_dimensions <- intersect(
+            selected_dimensions,
+            intersect(
+              names(df),
+              names(parameter_final)
+            )
+          )
+          
+          if (length(selected_dimensions) == 0) {
+            removeModal()
+            
+            showNotification(
+              "None of the selected dimensions exists in both datasets.",
+              type = "error"
+            )
+            
+            return()
+          }
+          
+          columns_to_keep <- unique(c(
+            selected_dimensions,
+            "measurement_unit",
+            "measurement_value"
+          ))
+          
+          message(
+            "Columns used for analysis: ",
+            paste(columns_to_keep, collapse = ", ")
+          )
+          
           r <- CWP.dataset::comprehensive_cwp_dataframe_analysis(
             parameter_init = df,
             parameter_final = parameter_final,
@@ -553,11 +712,11 @@ server <- function(input, output, session) {
             parameter_short = FALSE,
             parameter_columns_to_keep = c("Precision","measurement_unit","Values dataset 1","Values dataset 2","Loss / Gain","Difference (in %)","Dimension","Difference in value"),
             parameter_diff_value_or_percent = "Difference (in %)",
-            parameter_filtering = filt,
+            parameter_filtering = list(),
             parameter_time_dimension = time_cols,
             parameter_geographical_dimension = geo_dim,
             parameter_geographical_dimension_groupping = geo_group,
-            parameter_colnames_to_keep = if (PRELOAD_DATA) c("fishing_fleet_label", "Ocean", "species_name", "measurement_unit", "measurement_value") else "all",
+            parameter_colnames_to_keep = columns_to_keep,
             outputonly = FALSE,
             plotting_type = plotting,
             print_map = pm,
